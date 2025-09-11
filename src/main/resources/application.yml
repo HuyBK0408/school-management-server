@@ -1,0 +1,52 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/school
+    username: ADMIN
+    password: your_admin_password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+server:
+  port: 8080
+
+security:
+  jwt:
+    secret: "change-this-in-prod-32bytes-minimum-change-this-in-prod"
+    expiration: 86400000
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs        # m?c ??nh nh? n�y
+  swagger-ui:
+    path: /swagger-ui.html    # alias nhanh
+    tryItOutEnabled: true
+    filter: true              # � filter theo t�n API
+  packages-to-scan: Huy.example.demoMonday.controller
+    # ho?c:
+    # paths-to-match: /api/**    # ch? t�i li?u ho� c�c endpoint /api/**
+  server:
+    error:
+      include-message: always        # hiện message trong body error mặc định
+      include-binding-errors: always
+      include-stacktrace: on_param   # thêm ?trace=true để trả stacktrace (nếu dùng error page mặc định)
+
+  logging:
+    level:
+      root: INFO
+      Huy.example.demoMonday: DEBUG
+      org.springframework.web: DEBUG
+      org.hibernate.SQL: DEBUG
+      org.hibernate.orm.jdbc.bind: TRACE
+
+
+
