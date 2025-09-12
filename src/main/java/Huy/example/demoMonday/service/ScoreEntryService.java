@@ -1,13 +1,11 @@
-package Huy.example.demoMonday.service;
-import Huy.example.demoMonday.entity.ScoreEntry;
-import Huy.example.demoMonday.dto.request.ScoreEntryReq;
-import Huy.example.demoMonday.dto.response.ScoreEntryResp;
-import Huy.example.demoMonday.entity.Assessment;
-import Huy.example.demoMonday.entity.Student;
-import Huy.example.demoMonday.repo.AssessmentRepository;
-import Huy.example.demoMonday.repo.ScoreEntryRepository;
+package huy.example.demoMonday.service;
+import huy.example.demoMonday.entity.ScoreEntry;
+import huy.example.demoMonday.dto.response.ScoreEntryResp;
+import huy.example.demoMonday.entity.Assessment;
+import huy.example.demoMonday.entity.Student;
+import huy.example.demoMonday.repo.AssessmentRepository;
+import huy.example.demoMonday.repo.ScoreEntryRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Optional;
 import java.util.UUID;
 

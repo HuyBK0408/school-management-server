@@ -1,9 +1,9 @@
-package Huy.example.demoMonday.controller;
+package huy.example.demoMonday.controller;
 
-import Huy.example.demoMonday.dto.request.SchoolReq;
-import Huy.example.demoMonday.dto.response.ApiResponse;
-import Huy.example.demoMonday.dto.response.SchoolResp;
-import Huy.example.demoMonday.service.SchoolService;
+import huy.example.demoMonday.dto.request.SchoolReq;
+import huy.example.demoMonday.dto.response.ApiResponse;
+import huy.example.demoMonday.dto.response.SchoolResp;
+import huy.example.demoMonday.service.SchoolService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;

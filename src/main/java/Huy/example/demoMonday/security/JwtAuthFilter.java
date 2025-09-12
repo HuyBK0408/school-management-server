@@ -1,4 +1,4 @@
-package Huy.example.demoMonday.security;
+package huy.example.demoMonday.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;

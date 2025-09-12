@@ -1,18 +1,16 @@
-package Huy.example.demoMonday.controller;
+package huy.example.demoMonday.controller;
 
-import Huy.example.demoMonday.dto.response.ApiResponse;
-import Huy.example.demoMonday.dto.response.GradeAggregateResp;
-import Huy.example.demoMonday.service.GradeAggregateService;
+import huy.example.demoMonday.dto.response.ApiResponse;
+import huy.example.demoMonday.dto.response.GradeAggregateResp;
+import huy.example.demoMonday.service.GradeAggregateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -79,7 +77,7 @@ public class GradeAggregateController {
     @PatchMapping("/{id}/comments")
     public ResponseEntity<ApiResponse<GradeAggregateResp>> updateComments(
             @PathVariable UUID id,
-            @RequestParam(required = false) Huy.example.demoMonday.enums.Conduct conduct,
+            @RequestParam(required = false) huy.example.demoMonday.enums.Conduct conduct,
             @RequestParam(required = false) String teacherComment,
             @RequestParam(required = false) String parentComment
     ) {

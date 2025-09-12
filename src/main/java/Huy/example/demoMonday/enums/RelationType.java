@@ -1,3 +1,3 @@
-package Huy.example.demoMonday.enums;
+package huy.example.demoMonday.enums;
 
 public enum RelationType { FATHER, MOTHER, GUARDIAN }

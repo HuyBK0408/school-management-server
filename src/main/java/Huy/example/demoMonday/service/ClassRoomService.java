@@ -1,7 +1,7 @@
-package Huy.example.demoMonday.service;
+package huy.example.demoMonday.service;
 
-import Huy.example.demoMonday.entity.ClassRoom;
-import Huy.example.demoMonday.repo.*;
+import huy.example.demoMonday.entity.ClassRoom;
+import huy.example.demoMonday.repo.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +17,15 @@ public class ClassRoomService {
         this.repo = repo; this.gradeLevelRepo = gradeLevelRepo; this.schoolYearRepo = schoolYearRepo; this.schoolRepo = schoolRepo; this.staffRepo = staffRepo;
     }
 
-    private Huy.example.demoMonday.dto.response.ClassRoomResp toDto(ClassRoom e){
-        var b = Huy.example.demoMonday.dto.response.ClassRoomResp.builder().id(e.getId());
+    private huy.example.demoMonday.dto.response.ClassRoomResp toDto(ClassRoom e){
+        var b = huy.example.demoMonday.dto.response.ClassRoomResp.builder().id(e.getId());
         b.name(e.getName()).gradeLevelId(e.getGradeLevel().getId()).schoolYearId(e.getSchoolYear().getId()).schoolId(e.getSchool().getId());
         b.homeroomTeacherId(e.getHomeroomTeacher()==null?null:e.getHomeroomTeacher().getId());
         return b.build();
     }
 
     @Transactional
-    public Huy.example.demoMonday.dto.response.ClassRoomResp create(Huy.example.demoMonday.dto.request.ClassRoomReq req){
+    public huy.example.demoMonday.dto.response.ClassRoomResp create(huy.example.demoMonday.dto.request.ClassRoomReq req){
         var e = new ClassRoom();
         e.setName(req.getName());
         e.setGradeLevel(gradeLevelRepo.findById(req.getGradeLevelId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("GradeLevel not found: "+req.getGradeLevelId())));
@@ -36,7 +36,7 @@ public class ClassRoomService {
     }
 
     @Transactional
-    public Huy.example.demoMonday.dto.response.ClassRoomResp update(java.util.UUID id, Huy.example.demoMonday.dto.request.ClassRoomReq req){
+    public huy.example.demoMonday.dto.response.ClassRoomResp update(java.util.UUID id, huy.example.demoMonday.dto.request.ClassRoomReq req){
         var e = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("ClassRoom not found: " + id));
         e.setName(req.getName());
         e.setGradeLevel(gradeLevelRepo.findById(req.getGradeLevelId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("GradeLevel not found: "+req.getGradeLevelId())));
@@ -46,16 +46,16 @@ public class ClassRoomService {
         return toDto(repo.save(e));
     }
 
-    public Huy.example.demoMonday.dto.response.ClassRoomResp get(java.util.UUID id){
+    public huy.example.demoMonday.dto.response.ClassRoomResp get(java.util.UUID id){
         var e = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("ClassRoom not found: " + id));
         return toDto(e);
     }
 
-    public java.util.List<Huy.example.demoMonday.dto.response.ClassRoomResp> list(){
+    public java.util.List<huy.example.demoMonday.dto.response.ClassRoomResp> list(){
         return repo.findAll().stream().map(this::toDto).toList();
     }
 
-    public org.springframework.data.domain.Page<Huy.example.demoMonday.dto.response.ClassRoomResp> page(org.springframework.data.domain.Pageable pageable){
+    public org.springframework.data.domain.Page<huy.example.demoMonday.dto.response.ClassRoomResp> page(org.springframework.data.domain.Pageable pageable){
         return repo.findAll(pageable).map(this::toDto);
     }
 

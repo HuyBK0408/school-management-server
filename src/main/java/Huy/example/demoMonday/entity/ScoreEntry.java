@@ -1,8 +1,11 @@
-package Huy.example.demoMonday.entity;
+package huy.example.demoMonday.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
+@Getter @Setter
 @Table(uniqueConstraints=@UniqueConstraint(columnNames={"student_id","assessment_id"}))
 public class ScoreEntry extends BaseEntity {
     @Id
@@ -12,9 +15,5 @@ public class ScoreEntry extends BaseEntity {
     @ManyToOne(optional=false) private Assessment assessment;
     @Column(precision=4, scale=1) private java.math.BigDecimal score;
     private String note;
-    public java.util.UUID getId(){return id;} public void setId(java.util.UUID id){this.id=id;}
-    public Student getStudent(){return student;} public void setStudent(Student s){this.student=s;}
-    public Assessment getAssessment(){return assessment;} public void setAssessment(Assessment a){this.assessment=a;}
-    public java.math.BigDecimal getScore(){return score;} public void setScore(java.math.BigDecimal s){this.score=s;}
-    public String getNote(){return note;} public void setNote(String n){this.note=n;}
+
 }

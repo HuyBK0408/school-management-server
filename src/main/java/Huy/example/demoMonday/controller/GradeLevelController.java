@@ -1,9 +1,9 @@
-package Huy.example.demoMonday.controller;
+package huy.example.demoMonday.controller;
 
-import Huy.example.demoMonday.dto.request.GradeLevelReq;
-import Huy.example.demoMonday.dto.response.ApiResponse;
-import Huy.example.demoMonday.dto.response.GradeLevelResp;
-import Huy.example.demoMonday.service.GradeLevelService;
+import huy.example.demoMonday.dto.request.GradeLevelReq;
+import huy.example.demoMonday.dto.response.ApiResponse;
+import huy.example.demoMonday.dto.response.GradeLevelResp;
+import huy.example.demoMonday.service.GradeLevelService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;

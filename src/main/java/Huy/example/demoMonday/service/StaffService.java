@@ -1,9 +1,9 @@
-package Huy.example.demoMonday.service;
+package huy.example.demoMonday.service;
 
-import Huy.example.demoMonday.entity.Staff;
-import Huy.example.demoMonday.repo.SchoolRepository;
-import Huy.example.demoMonday.repo.StaffRepository;
-import Huy.example.demoMonday.repo.UserAccountRepository;
+import huy.example.demoMonday.entity.Staff;
+import huy.example.demoMonday.repo.SchoolRepository;
+import huy.example.demoMonday.repo.StaffRepository;
+import huy.example.demoMonday.repo.UserAccountRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,8 +17,8 @@ public class StaffService {
         this.repo = repo; this.schoolRepo = schoolRepo; this.userAccountRepo = userAccountRepo;
     }
 
-    private Huy.example.demoMonday.dto.response.StaffResp toDto(Staff e){
-        var b = Huy.example.demoMonday.dto.response.StaffResp.builder().id(e.getId());
+    private huy.example.demoMonday.dto.response.StaffResp toDto(Staff e){
+        var b = huy.example.demoMonday.dto.response.StaffResp.builder().id(e.getId());
         b.fullName(e.getFullName()).dob(e.getDob()).gender(e.getGender()).phone(e.getPhone()).email(e.getEmail()).position(e.getPosition());
         b.schoolId(e.getSchool().getId());
         b.userId(e.getUser()==null?null:e.getUser().getId());
@@ -26,7 +26,7 @@ public class StaffService {
     }
 
     @Transactional
-    public Huy.example.demoMonday.dto.response.StaffResp create(Huy.example.demoMonday.dto.request.StaffReq req){
+    public huy.example.demoMonday.dto.response.StaffResp create(huy.example.demoMonday.dto.request.StaffReq req){
         var e = new Staff();
         e.setFullName(req.getFullName()); e.setDob(req.getDob()); e.setGender(req.getGender()); e.setPhone(req.getPhone()); e.setEmail(req.getEmail()); e.setPosition(req.getPosition());
         e.setSchool(schoolRepo.findById(req.getSchoolId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("School not found: "+req.getSchoolId())));
@@ -35,7 +35,7 @@ public class StaffService {
     }
 
     @Transactional
-    public Huy.example.demoMonday.dto.response.StaffResp update(java.util.UUID id, Huy.example.demoMonday.dto.request.StaffReq req){
+    public huy.example.demoMonday.dto.response.StaffResp update(java.util.UUID id, huy.example.demoMonday.dto.request.StaffReq req){
         var e = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("Staff not found: " + id));
         e.setFullName(req.getFullName()); e.setDob(req.getDob()); e.setGender(req.getGender()); e.setPhone(req.getPhone()); e.setEmail(req.getEmail()); e.setPosition(req.getPosition());
         e.setSchool(schoolRepo.findById(req.getSchoolId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("School not found: "+req.getSchoolId())));
@@ -43,16 +43,16 @@ public class StaffService {
         return toDto(repo.save(e));
     }
 
-    public Huy.example.demoMonday.dto.response.StaffResp get(java.util.UUID id){
+    public huy.example.demoMonday.dto.response.StaffResp get(java.util.UUID id){
         var e = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("Staff not found: " + id));
         return toDto(e);
     }
 
-    public java.util.List<Huy.example.demoMonday.dto.response.StaffResp> list(){
+    public java.util.List<huy.example.demoMonday.dto.response.StaffResp> list(){
         return repo.findAll().stream().map(this::toDto).toList();
     }
 
-    public org.springframework.data.domain.Page<Huy.example.demoMonday.dto.response.StaffResp> page(org.springframework.data.domain.Pageable pageable){
+    public org.springframework.data.domain.Page<huy.example.demoMonday.dto.response.StaffResp> page(org.springframework.data.domain.Pageable pageable){
         return repo.findAll(pageable).map(this::toDto);
     }
 

@@ -1,12 +1,12 @@
-package Huy.example.demoMonday.service;
+package huy.example.demoMonday.service;
 
-import Huy.example.demoMonday.dto.request.AssessmentReq;
-import Huy.example.demoMonday.dto.response.AssessmentResp;
-import Huy.example.demoMonday.entity.Assessment;
-import Huy.example.demoMonday.repo.AssessmentRepository;
-import Huy.example.demoMonday.repo.ClassRoomRepository;
-import Huy.example.demoMonday.repo.SubjectRepository;
-import Huy.example.demoMonday.repo.TermRepository;
+import huy.example.demoMonday.dto.request.AssessmentReq;
+import huy.example.demoMonday.dto.response.AssessmentResp;
+import huy.example.demoMonday.entity.Assessment;
+import huy.example.demoMonday.repo.AssessmentRepository;
+import huy.example.demoMonday.repo.ClassRoomRepository;
+import huy.example.demoMonday.repo.SubjectRepository;
+import huy.example.demoMonday.repo.TermRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

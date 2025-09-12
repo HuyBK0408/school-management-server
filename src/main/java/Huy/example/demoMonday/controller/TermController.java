@@ -1,9 +1,9 @@
-package Huy.example.demoMonday.controller;
+package huy.example.demoMonday.controller;
 
-import Huy.example.demoMonday.dto.request.TermReq;
-import Huy.example.demoMonday.dto.response.ApiResponse;
-import Huy.example.demoMonday.dto.response.TermResp;
-import Huy.example.demoMonday.service.TermService;
+import huy.example.demoMonday.dto.request.TermReq;
+import huy.example.demoMonday.dto.response.ApiResponse;
+import huy.example.demoMonday.dto.response.TermResp;
+import huy.example.demoMonday.service.TermService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;

@@ -1,7 +1,11 @@
-package Huy.example.demoMonday.dto.request;
+package huy.example.demoMonday.dto.request;
 
 import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class UserAccountReq {
     @NotNull
     private String username;
@@ -10,16 +14,5 @@ public class UserAccountReq {
     @NotNull private String phone;
     @NotNull private Boolean enabled;
     private java.util.UUID schoolId;
-    public String getUsername(){ return username; }
-    public void setUsername(String v){ this.username=v; }
-    public String getPasswordHash(){ return passwordHash; }
-    public void setPasswordHash(String v){ this.passwordHash=v; }
-    public String getEmail(){ return email; }
-    public void setEmail(String v){ this.email=v; }
-    public String getPhone(){ return phone; }
-    public void setPhone(String v){ this.phone=v; }
-    public Boolean getEnabled(){ return enabled; }
-    public void setEnabled(Boolean v){ this.enabled=v; }
-    public java.util.UUID getSchoolId(){ return schoolId; }
-    public void setSchoolId(java.util.UUID v){ this.schoolId=v; }
+
 }

@@ -1,14 +1,13 @@
-package Huy.example.demoMonday.service;
+package huy.example.demoMonday.service;
 
 
-import Huy.example.demoMonday.dto.response.GradeAggregateResp;
-import Huy.example.demoMonday.entity.GradeAggregate;
-import Huy.example.demoMonday.entity.Student;
-import Huy.example.demoMonday.entity.Subject;
-import Huy.example.demoMonday.entity.Term;
-import Huy.example.demoMonday.repo.GradeAggregateRepository;
-import Huy.example.demoMonday.repo.ScoreEntryRepository;
-import jakarta.persistence.EntityManager;
+import huy.example.demoMonday.dto.response.GradeAggregateResp;
+import huy.example.demoMonday.entity.GradeAggregate;
+import huy.example.demoMonday.entity.Student;
+import huy.example.demoMonday.entity.Subject;
+import huy.example.demoMonday.entity.Term;
+import huy.example.demoMonday.repo.GradeAggregateRepository;
+import huy.example.demoMonday.repo.ScoreEntryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -88,7 +87,7 @@ public class GradeAggregateService {
 
     // giữ nguyên các logic khác như updateComments(...)
     public GradeAggregateResp updateComments(UUID id,
-                                             Huy.example.demoMonday.enums.Conduct conduct,
+                                             huy.example.demoMonday.enums.Conduct conduct,
                                              String teacherComment,
                                              String parentComment) {
         // giữ nguyên đúng cách bạn đang làm trước đó

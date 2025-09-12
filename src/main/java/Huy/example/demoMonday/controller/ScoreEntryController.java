@@ -1,17 +1,14 @@
-package Huy.example.demoMonday.controller;
+package huy.example.demoMonday.controller;
 
-import Huy.example.demoMonday.dto.request.ScoreEntryReq;
-import Huy.example.demoMonday.dto.response.ApiResponse;
-import Huy.example.demoMonday.dto.response.ScoreEntryResp;
-import Huy.example.demoMonday.entity.ScoreEntry;
-import Huy.example.demoMonday.service.ScoreEntryService;
-import jakarta.validation.Valid;
+import huy.example.demoMonday.dto.response.ApiResponse;
+import huy.example.demoMonday.dto.response.ScoreEntryResp;
+import huy.example.demoMonday.entity.ScoreEntry;
+import huy.example.demoMonday.service.ScoreEntryService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;

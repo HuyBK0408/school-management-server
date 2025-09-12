@@ -1,8 +1,8 @@
-package Huy.example.demoMonday.service;
+package huy.example.demoMonday.service;
 
-import Huy.example.demoMonday.entity.UserAccount;
-import Huy.example.demoMonday.repo.SchoolRepository;
-import Huy.example.demoMonday.repo.UserAccountRepository;
+import huy.example.demoMonday.entity.UserAccount;
+import huy.example.demoMonday.repo.SchoolRepository;
+import huy.example.demoMonday.repo.UserAccountRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,15 +15,15 @@ public class UserAccountService {
         this.repo = repo; this.schoolRepo = schoolRepo;
     }
 
-    private Huy.example.demoMonday.dto.response.UserAccountResp toDto(UserAccount e){
-        var b = Huy.example.demoMonday.dto.response.UserAccountResp.builder().id(e.getId());
+    private huy.example.demoMonday.dto.response.UserAccountResp toDto(UserAccount e){
+        var b = huy.example.demoMonday.dto.response.UserAccountResp.builder().id(e.getId());
         b.username(e.getUsername()).email(e.getEmail()).phone(e.getPhone()).enabled(e.isEnabled());
         b.schoolId(e.getSchool()==null?null:e.getSchool().getId());
         return b.build();
     }
 
     @Transactional
-    public Huy.example.demoMonday.dto.response.UserAccountResp create(Huy.example.demoMonday.dto.request.UserAccountReq req){
+    public huy.example.demoMonday.dto.response.UserAccountResp create(huy.example.demoMonday.dto.request.UserAccountReq req){
         var e = new UserAccount();
         e.setUsername(req.getUsername()); e.setPasswordHash(req.getPasswordHash()); e.setEmail(req.getEmail()); e.setPhone(req.getPhone()); e.setEnabled(req.getEnabled());
         e.setSchool(req.getSchoolId()==null?null:schoolRepo.findById(req.getSchoolId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("School not found: "+req.getSchoolId())));
@@ -31,23 +31,23 @@ public class UserAccountService {
     }
 
     @Transactional
-    public Huy.example.demoMonday.dto.response.UserAccountResp update(java.util.UUID id, Huy.example.demoMonday.dto.request.UserAccountReq req){
+    public huy.example.demoMonday.dto.response.UserAccountResp update(java.util.UUID id, huy.example.demoMonday.dto.request.UserAccountReq req){
         var e = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("UserAccount not found: " + id));
         e.setUsername(req.getUsername()); e.setPasswordHash(req.getPasswordHash()); e.setEmail(req.getEmail()); e.setPhone(req.getPhone()); e.setEnabled(req.getEnabled());
         e.setSchool(req.getSchoolId()==null?null:schoolRepo.findById(req.getSchoolId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("School not found: "+req.getSchoolId())));
         return toDto(repo.save(e));
     }
 
-    public Huy.example.demoMonday.dto.response.UserAccountResp get(java.util.UUID id){
+    public huy.example.demoMonday.dto.response.UserAccountResp get(java.util.UUID id){
         var e = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("UserAccount not found: " + id));
         return toDto(e);
     }
 
-    public java.util.List<Huy.example.demoMonday.dto.response.UserAccountResp> list(){
+    public java.util.List<huy.example.demoMonday.dto.response.UserAccountResp> list(){
         return repo.findAll().stream().map(this::toDto).toList();
     }
 
-    public org.springframework.data.domain.Page<Huy.example.demoMonday.dto.response.UserAccountResp> page(org.springframework.data.domain.Pageable pageable){
+    public org.springframework.data.domain.Page<huy.example.demoMonday.dto.response.UserAccountResp> page(org.springframework.data.domain.Pageable pageable){
         return repo.findAll(pageable).map(this::toDto);
     }
 

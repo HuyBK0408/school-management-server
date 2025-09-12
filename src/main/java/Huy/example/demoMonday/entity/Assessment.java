@@ -1,6 +1,6 @@
-package Huy.example.demoMonday.entity;
+package huy.example.demoMonday.entity;
 
-import Huy.example.demoMonday.enums.AssessmentType;
+import huy.example.demoMonday.enums.AssessmentType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

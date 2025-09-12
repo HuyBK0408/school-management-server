@@ -1,16 +1,14 @@
-package Huy.example.demoMonday.repo;
+package huy.example.demoMonday.repo;
 
 
-import Huy.example.demoMonday.dto.response.GradeAggregateResp;
-import Huy.example.demoMonday.entity.GradeAggregate;
+import huy.example.demoMonday.dto.response.GradeAggregateResp;
+import huy.example.demoMonday.entity.GradeAggregate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,7 +16,7 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
 
     // “Chung” – đúng 1 bản ghi theo (student,subject,term)
     @Query("""
-        select new Huy.example.demoMonday.dto.response.GradeAggregateResp(
+        select new huy.example.demoMonday.dto.response.GradeAggregateResp(
           ga.id, ga.student.id, ga.subject.id, ga.term.id,
           ga.avgScore, ga.conduct, ga.teacherComment, ga.parentComment
         )
@@ -32,7 +30,7 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
 
     // 4 filter đơn
     @Query("""
-        select new Huy.example.demoMonday.dto.response.GradeAggregateResp(
+        select new huy.example.demoMonday.dto.response.GradeAggregateResp(
           ga.id, ga.student.id, ga.subject.id, ga.term.id,
           ga.avgScore, ga.conduct, ga.teacherComment, ga.parentComment
         )
@@ -43,7 +41,7 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
     Page<GradeAggregateResp> listByStudent(@Param("studentId") UUID studentId, Pageable pageable);
 
     @Query("""
-        select new Huy.example.demoMonday.dto.response.GradeAggregateResp(
+        select new huy.example.demoMonday.dto.response.GradeAggregateResp(
           ga.id, ga.student.id, ga.subject.id, ga.term.id,
           ga.avgScore, ga.conduct, ga.teacherComment, ga.parentComment
         )
@@ -54,7 +52,7 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
     Page<GradeAggregateResp> listBySubject(@Param("subjectId") UUID subjectId, Pageable pageable);
 
     @Query("""
-        select new Huy.example.demoMonday.dto.response.GradeAggregateResp(
+        select new huy.example.demoMonday.dto.response.GradeAggregateResp(
           ga.id, ga.student.id, ga.subject.id, ga.term.id,
           ga.avgScore, ga.conduct, ga.teacherComment, ga.parentComment
         )
@@ -65,7 +63,7 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
     Page<GradeAggregateResp> listByTerm(@Param("termId") UUID termId, Pageable pageable);
 
     @Query("""
-        select new Huy.example.demoMonday.dto.response.GradeAggregateResp(
+        select new huy.example.demoMonday.dto.response.GradeAggregateResp(
           ga.id, ga.student.id, ga.subject.id, ga.term.id,
           ga.avgScore, ga.conduct, ga.teacherComment, ga.parentComment
         )
@@ -77,7 +75,7 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
 
     // cặp với schoolYear
     @Query("""
-        select new Huy.example.demoMonday.dto.response.GradeAggregateResp(
+        select new huy.example.demoMonday.dto.response.GradeAggregateResp(
           ga.id, ga.student.id, ga.subject.id, ga.term.id,
           ga.avgScore, ga.conduct, ga.teacherComment, ga.parentComment
         )
@@ -90,7 +88,7 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
                                                      Pageable pageable);
 
     @Query("""
-        select new Huy.example.demoMonday.dto.response.GradeAggregateResp(
+        select new huy.example.demoMonday.dto.response.GradeAggregateResp(
           ga.id, ga.student.id, ga.subject.id, ga.term.id,
           ga.avgScore, ga.conduct, ga.teacherComment, ga.parentComment
         )
@@ -104,7 +102,7 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
 
     // 4 filter tổ chức: school, gradeLevel, classroom, teacher (qua Student/Classroom hoặc SchoolYear)
     @Query("""
-        select new Huy.example.demoMonday.dto.response.GradeAggregateResp(
+        select new huy.example.demoMonday.dto.response.GradeAggregateResp(
           ga.id, ga.student.id, ga.subject.id, ga.term.id,
           ga.avgScore, ga.conduct, ga.teacherComment, ga.parentComment
         )

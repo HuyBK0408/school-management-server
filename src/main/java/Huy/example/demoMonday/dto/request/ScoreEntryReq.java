@@ -1,9 +1,12 @@
-package Huy.example.demoMonday.dto.request;
+package huy.example.demoMonday.dto.request;
 
 import jakarta.validation.constraints.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+
 
 public record ScoreEntryReq(
         @NotNull UUID studentId,

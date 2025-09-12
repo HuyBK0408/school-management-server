@@ -1,6 +1,4 @@
-package Huy.example.demoMonday.config;
-
-import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+package huy.example.demoMonday.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -32,7 +30,7 @@ public class OpenApiConfig {
     public GroupedOpenApi publicApi() {
         return GroupedOpenApi.builder()
                 .group("v1")
-                .packagesToScan("Huy.example.demoMonday.controller")
+                .packagesToScan("huy.example.demoMonday.controller")
                 .pathsToMatch("/auth/**", "/api/**", "/api/v1/**")
                 .build();
     }

@@ -1,6 +1,6 @@
-package Huy.example.demoMonday.dto.response;
+package huy.example.demoMonday.dto.response;
 
-import Huy.example.demoMonday.enums.AssessmentType;
+import huy.example.demoMonday.enums.AssessmentType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

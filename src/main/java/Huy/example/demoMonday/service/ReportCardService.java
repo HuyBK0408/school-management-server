@@ -1,13 +1,9 @@
-package Huy.example.demoMonday.service;
+package huy.example.demoMonday.service;
 
-import Huy.example.demoMonday.dto.response.ReportCardResp;
-import Huy.example.demoMonday.entity.GradeAggregate;
-import Huy.example.demoMonday.entity.ReportCard;
-import Huy.example.demoMonday.entity.SchoolYear;
-import Huy.example.demoMonday.entity.Student;
-import Huy.example.demoMonday.repo.GradeAggregateRepository;
-import Huy.example.demoMonday.repo.ReportCardRepository;
-import jakarta.persistence.EntityManager;
+import huy.example.demoMonday.entity.ReportCard;
+import huy.example.demoMonday.entity.SchoolYear;
+import huy.example.demoMonday.entity.Student;
+import huy.example.demoMonday.repo.ReportCardRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

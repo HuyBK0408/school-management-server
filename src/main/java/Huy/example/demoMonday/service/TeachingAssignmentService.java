@@ -1,7 +1,7 @@
-package Huy.example.demoMonday.service;
+package huy.example.demoMonday.service;
 
-import Huy.example.demoMonday.entity.TeachingAssignment;
-import Huy.example.demoMonday.repo.*;
+import huy.example.demoMonday.entity.TeachingAssignment;
+import huy.example.demoMonday.repo.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +17,15 @@ public class TeachingAssignmentService {
         this.repo = repo; this.staffRepo = staffRepo; this.classRoomRepo = classRoomRepo; this.subjectRepo = subjectRepo; this.schoolYearRepo = schoolYearRepo;
     }
 
-    private Huy.example.demoMonday.dto.response.TeachingAssignmentResp toDto(TeachingAssignment e){
-        var b = Huy.example.demoMonday.dto.response.TeachingAssignmentResp.builder().id(e.getId());
+    private huy.example.demoMonday.dto.response.TeachingAssignmentResp toDto(TeachingAssignment e){
+        var b = huy.example.demoMonday.dto.response.TeachingAssignmentResp.builder().id(e.getId());
         b.teacherId(e.getTeacher().getId()).classId(e.getClassRoom().getId()).subjectId(e.getSubject().getId()).schoolYearId(e.getSchoolYear().getId());
         b.assignedFrom(e.getAssignedFrom()).assignedTo(e.getAssignedTo());
         return b.build();
     }
 
     @Transactional
-    public Huy.example.demoMonday.dto.response.TeachingAssignmentResp create(Huy.example.demoMonday.dto.request.TeachingAssignmentReq req){
+    public huy.example.demoMonday.dto.response.TeachingAssignmentResp create(huy.example.demoMonday.dto.request.TeachingAssignmentReq req){
         var e = new TeachingAssignment();
         e.setTeacher(staffRepo.findById(req.getTeacherId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Staff not found: "+req.getTeacherId())));
         e.setClassRoom(classRoomRepo.findById(req.getClassId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Class not found: "+req.getClassId())));
@@ -36,7 +36,7 @@ public class TeachingAssignmentService {
     }
 
     @Transactional
-    public Huy.example.demoMonday.dto.response.TeachingAssignmentResp update(java.util.UUID id, Huy.example.demoMonday.dto.request.TeachingAssignmentReq req){
+    public huy.example.demoMonday.dto.response.TeachingAssignmentResp update(java.util.UUID id, huy.example.demoMonday.dto.request.TeachingAssignmentReq req){
         var e = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("TeachingAssignment not found: " + id));
         e.setTeacher(staffRepo.findById(req.getTeacherId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Staff not found: "+req.getTeacherId())));
         e.setClassRoom(classRoomRepo.findById(req.getClassId()).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Class not found: "+req.getClassId())));
@@ -46,16 +46,16 @@ public class TeachingAssignmentService {
         return toDto(repo.save(e));
     }
 
-    public Huy.example.demoMonday.dto.response.TeachingAssignmentResp get(java.util.UUID id){
+    public huy.example.demoMonday.dto.response.TeachingAssignmentResp get(java.util.UUID id){
         var e = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("TeachingAssignment not found: " + id));
         return toDto(e);
     }
 
-    public java.util.List<Huy.example.demoMonday.dto.response.TeachingAssignmentResp> list(){
+    public java.util.List<huy.example.demoMonday.dto.response.TeachingAssignmentResp> list(){
         return repo.findAll().stream().map(this::toDto).toList();
     }
 
-    public org.springframework.data.domain.Page<Huy.example.demoMonday.dto.response.TeachingAssignmentResp> page(org.springframework.data.domain.Pageable pageable){
+    public org.springframework.data.domain.Page<huy.example.demoMonday.dto.response.TeachingAssignmentResp> page(org.springframework.data.domain.Pageable pageable){
         return repo.findAll(pageable).map(this::toDto);
     }
 

@@ -1,3 +1,3 @@
-package Huy.example.demoMonday.enums;
+package huy.example.demoMonday.enums;
 
 public enum StaffPosition { TEACHER, STAFF }

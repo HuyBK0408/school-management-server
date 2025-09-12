@@ -1,7 +1,7 @@
-package Huy.example.demoMonday.repo;
+package huy.example.demoMonday.repo;
 
 
-import Huy.example.demoMonday.entity.ScoreEntry;
+import huy.example.demoMonday.entity.ScoreEntry;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 

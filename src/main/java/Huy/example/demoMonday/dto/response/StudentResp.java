@@ -1,4 +1,4 @@
-package Huy.example.demoMonday.dto.response;
+package huy.example.demoMonday.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,10 +13,10 @@ public class StudentResp {
     private java.util.UUID id;
     private String fullName;
     private java.time.LocalDate dob;
-    private Huy.example.demoMonday.enums.Gender gender;
+    private huy.example.demoMonday.enums.Gender gender;
     private String studentCode;
     private java.util.UUID currentClassId;
     private java.util.UUID schoolId;
     private String photoUrl;
-    private Huy.example.demoMonday.enums.StudentStatus status;
+    private huy.example.demoMonday.enums.StudentStatus status;
 }

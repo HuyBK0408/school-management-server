@@ -1,4 +1,4 @@
-package Huy.example.demoMonday.security;
+package huy.example.demoMonday.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -12,9 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Value;
 
 
 @Service

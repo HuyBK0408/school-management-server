@@ -1,4 +1,4 @@
-package Huy.example.demoMonday.dto.response;
+package huy.example.demoMonday.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,5 +15,5 @@ public class StudentCardResp {
     private String cardNumber;
     private java.time.LocalDate issuedDate;
     private java.time.LocalDate expiredDate;
-    private Huy.example.demoMonday.enums.CardStatus status;
+    private huy.example.demoMonday.enums.CardStatus status;
 }

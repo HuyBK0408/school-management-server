@@ -1,4 +1,4 @@
-package Huy.example.demoMonday.dto.response;
+package huy.example.demoMonday.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 public class ParentResp {
     private java.util.UUID id;
     private String fullName;
-    private Huy.example.demoMonday.enums.RelationType relationType;
+    private huy.example.demoMonday.enums.RelationType relationType;
     private String phone;
     private String email;
     private String address;

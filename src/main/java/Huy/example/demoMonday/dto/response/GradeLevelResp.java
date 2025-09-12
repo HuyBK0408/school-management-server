@@ -1,4 +1,4 @@
-package Huy.example.demoMonday.dto.response;
+package huy.example.demoMonday.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,7 +1,7 @@
-package Huy.example.demoMonday.controller;
+package huy.example.demoMonday.controller;
 
-import Huy.example.demoMonday.dto.response.ApiResponse;
-import Huy.example.demoMonday.security.JwtService;
+import huy.example.demoMonday.dto.response.ApiResponse;
+import huy.example.demoMonday.security.JwtService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

@@ -1,4 +1,4 @@
-package Huy.example.demoMonday.entity;
+package huy.example.demoMonday.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;

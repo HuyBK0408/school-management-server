@@ -1,8 +1,6 @@
-package Huy.example.demoMonday.repo;
+package huy.example.demoMonday.repo;
 
-import Huy.example.demoMonday.dto.response.ReportCardResp;
-
-import Huy.example.demoMonday.entity.ReportCard;
+import huy.example.demoMonday.entity.ReportCard;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,18 +1,14 @@
-package Huy.example.demoMonday.controller;
+package huy.example.demoMonday.controller;
 
-import Huy.example.demoMonday.dto.response.ApiResponse;
-import Huy.example.demoMonday.dto.response.ReportCardResp;
-import Huy.example.demoMonday.repo.ReportCardRepository;
-import Huy.example.demoMonday.service.ReportCardService;
+import huy.example.demoMonday.dto.response.ApiResponse;
+import huy.example.demoMonday.service.ReportCardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
