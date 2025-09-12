@@ -1,4 +1,4 @@
-package Huy.example.demoMonday.controller;
+package huy.example.demoMonday.controller;
 
 import huy.example.demoMonday.dto.request.UserRoleReq;
 import huy.example.demoMonday.dto.response.ApiResponse;
