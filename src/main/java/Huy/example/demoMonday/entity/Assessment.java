@@ -14,7 +14,7 @@ import java.util.UUID;
 @Table(name = "assessment")
 @Getter @Setter
 @NoArgsConstructor
-public class Assessment extends Auditable {
+public class Assessment extends BaseEntity {
     @Id @GeneratedValue
     private UUID id;
 
