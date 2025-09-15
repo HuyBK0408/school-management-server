@@ -9,7 +9,7 @@ import lombok.Setter;
 @Table(uniqueConstraints=@UniqueConstraint(columnNames={"teacher_id","class_id","subject_id","school_year_id"}))
 public class TeachingAssignment extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     @ManyToOne(optional=false) private Staff teacher;
     @ManyToOne(optional=false) @JoinColumn(name="class_id") private ClassRoom classRoom;

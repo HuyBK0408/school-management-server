@@ -11,7 +11,7 @@ import lombok.ToString;
 @ToString
 public class Parent extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     private String fullName;
     @Enumerated(EnumType.STRING)

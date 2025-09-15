@@ -1,9 +1,6 @@
 package huy.example.demoMonday.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,7 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ClassRoom extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     private String name;
     @ManyToOne(optional=false) private GradeLevel gradeLevel;

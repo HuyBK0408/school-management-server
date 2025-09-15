@@ -11,7 +11,7 @@ import lombok.Setter;
 @Table(uniqueConstraints=@UniqueConstraint(columnNames={"student_id","subject_id","term_id"}))
 public class GradeAggregate extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     @ManyToOne(optional = false)
     private Student student;

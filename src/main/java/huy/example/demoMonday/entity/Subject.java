@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter @Setter
 public class Subject extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     private String name; @Column(unique=true) private String code;
     @ManyToOne(optional=false) private School school;

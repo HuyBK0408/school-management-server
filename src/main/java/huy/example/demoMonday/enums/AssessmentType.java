@@ -1,3 +1,9 @@
 package huy.example.demoMonday.enums;
 
-public enum AssessmentType { QUIZ_15, QUIZ_45, MIDTERM, FINAL, ASSIGNMENT }
+public enum AssessmentType {
+    QUIZ_15,
+    QUIZ_45,
+    ASSIGNMENT,
+    MIDTERM,
+    FINAL
+}

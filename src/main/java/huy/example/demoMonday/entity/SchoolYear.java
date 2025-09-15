@@ -1,9 +1,6 @@
 package huy.example.demoMonday.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,7 +8,7 @@ import lombok.Setter;
 @Getter @Setter
 public class SchoolYear extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     private String code;
     private java.time.LocalDate startDate;

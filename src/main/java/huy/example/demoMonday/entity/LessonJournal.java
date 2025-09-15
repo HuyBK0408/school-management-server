@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class LessonJournal extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     @ManyToOne(optional=false) @JoinColumn(name="class_id") private ClassRoom classRoom;
     @ManyToOne(optional=false) private Subject subject;

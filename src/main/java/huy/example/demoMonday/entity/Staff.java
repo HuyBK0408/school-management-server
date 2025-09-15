@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter @Setter
 public class Staff extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     private String fullName; private java.time.LocalDate dob;   @Enumerated(EnumType.STRING) private huy.example.demoMonday.enums.Gender gender; private String phone; private String email;
     @Enumerated(EnumType.STRING) private huy.example.demoMonday.enums.StaffPosition position;

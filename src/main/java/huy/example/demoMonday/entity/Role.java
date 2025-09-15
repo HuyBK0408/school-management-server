@@ -9,7 +9,7 @@ import lombok.Setter;
 @Table(name="roles")
 public class Role extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     @Column(unique=true, nullable=false) private String code;
 

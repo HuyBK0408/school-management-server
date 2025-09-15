@@ -1,52 +1,44 @@
 spring:
+  application:
+    name: demoMonday
+
+  # DataSource ứng dụng (user thường). Dùng currentSchema=app
   datasource:
-    url: jdbc:postgresql://localhost:5432/school
+    url: jdbc:postgresql://localhost:5432/school?currentSchema=app
     username: ADMIN
     password: your_admin_password
     driver-class-name: org.postgresql.Driver
+
+  # KHÔNG để Spring tự chạy schema.sql (chúng ta tự chạy sau khi bootstrap)
+  sql:
+    init:
+      mode: never
+
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
+    open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-    open-in-view: false
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
+
 server:
   port: 8080
 
-security:
-  jwt:
-    secret: "change-this-in-prod-32bytes-minimum-change-this-in-prod"
-    expiration: 86400000
+logging:
+  level:
+    root: info
+    org.hibernate.SQL: warn
+    org.hibernate.orm.deprecation: warn
 
-springdoc:
-  api-docs:
-    path: /v3/api-docs        # m?c ??nh nh? n�y
-  swagger-ui:
-    path: /swagger-ui.html    # alias nhanh
-    tryItOutEnabled: true
-    filter: true              # � filter theo t�n API
-  packages-to-scan: huy.example.demoMonday.controller
-    # ho?c:
-    # paths-to-match: /api/**    # ch? t�i li?u ho� c�c endpoint /api/**
-  server:
-    error:
-      include-message: always        # hiện message trong body error mặc định
-      include-binding-errors: always
-      include-stacktrace: on_param   # thêm ?trace=true để trả stacktrace (nếu dùng error page mặc định)
+# Thông số bootstrap cho tài khoản admin
+app:
+  db:
+    # DS admin kết nối DB "postgres" để tạo database "school" nếu thiếu
+    admin-url: jdbc:postgresql://localhost:5432/postgres
+    admin-username: postgres         # superuser hoặc user có quyền tạo DB
+    admin-password: root
 
-  logging:
-    level:
-      root: INFO
-      huy.example.demoMonday: DEBUG
-      org.springframework.web: DEBUG
-      org.hibernate.SQL: DEBUG
-      org.hibernate.orm.jdbc.bind: TRACE
-
-
-
+    target-db: school                # DB mục tiêu
+    target-schema: app               # schema muốn dùng
+    app-username: ADMIN              # user ứng dụng (đang cấu hình ở spring.datasource)

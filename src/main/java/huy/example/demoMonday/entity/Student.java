@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class Student extends BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
     private String fullName; private java.time.LocalDate dob;   @Enumerated(EnumType.STRING) private huy.example.demoMonday.enums.Gender gender;
     @Column(unique=true) private String studentCode;
