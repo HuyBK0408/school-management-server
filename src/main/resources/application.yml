@@ -1,44 +1,20 @@
 spring:
-  application:
-    name: demoMonday
-
-  # DataSource ứng dụng (user thường). Dùng currentSchema=app
   datasource:
-    url: jdbc:postgresql://localhost:5432/school?currentSchema=app
-    username: ADMIN
-    password: your_admin_password
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/school}
+    username: ${DB_USER:school}
+    password: ${DB_PASS:school}
     driver-class-name: org.postgresql.Driver
-
-  # KHÔNG để Spring tự chạy schema.sql (chúng ta tự chạy sau khi bootstrap)
-  sql:
-    init:
-      mode: never
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update   # lần đầu có thể dùng create-drop, xong rồi chuyển update
     open-in-view: false
     properties:
-      hibernate:
-        format_sql: true
+      hibernate.jdbc.lob.non_contextual_creation: true
+      hibernate.format_sql: true
+    sql:
+      init:
+        mode: never         # chỉ tạo schema nếu thiếu
 
 server:
   port: 8080
-
-logging:
-  level:
-    root: info
-    org.hibernate.SQL: warn
-    org.hibernate.orm.deprecation: warn
-
-# Thông số bootstrap cho tài khoản admin
-app:
-  db:
-    # DS admin kết nối DB "postgres" để tạo database "school" nếu thiếu
-    admin-url: jdbc:postgresql://localhost:5432/postgres
-    admin-username: postgres         # superuser hoặc user có quyền tạo DB
-    admin-password: root
-
-    target-db: school                # DB mục tiêu
-    target-schema: app               # schema muốn dùng
-    app-username: ADMIN              # user ứng dụng (đang cấu hình ở spring.datasource)

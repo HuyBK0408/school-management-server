@@ -24,8 +24,8 @@ public class Assessment extends BaseEntity {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
-    @Column(nullable = false, length = 150)
-    private String title;
+    //@Column(nullable = false, length = 150)
+    //private String title;
 
     @Column(nullable = false)
     private Integer weight = 1;
