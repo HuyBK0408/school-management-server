@@ -16,7 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // để dùng @PreAuthorize trên controller
+@EnableMethodSecurity(prePostEnabled = true) // để dùng @PreAuthorize trên controller
 public class SecurityConfig {
 
     @Bean

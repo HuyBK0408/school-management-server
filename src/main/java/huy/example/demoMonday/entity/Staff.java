@@ -13,6 +13,8 @@ public class Staff extends BaseEntity {
     private String fullName; private java.time.LocalDate dob;   @Enumerated(EnumType.STRING) private huy.example.demoMonday.enums.Gender gender; private String phone; private String email;
     @Enumerated(EnumType.STRING) private huy.example.demoMonday.enums.StaffPosition position;
     @ManyToOne(optional=false) private School school;
-    @ManyToOne private UserAccount user;
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "user_id")
+    private UserAccount user;
 
 }

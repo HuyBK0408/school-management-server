@@ -19,6 +19,7 @@ public class Parent extends BaseEntity {
     private String phone;
     private String email;
     private String address;
-    @ManyToOne
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "user_id")
     private UserAccount user;
 }

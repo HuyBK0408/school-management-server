@@ -7,14 +7,19 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update   # lần đầu có thể dùng create-drop, xong rồi chuyển update
+      ddl-auto: none          # QUAN TRỌNG: không để create/update
     open-in-view: false
     properties:
       hibernate.jdbc.lob.non_contextual_creation: true
       hibernate.format_sql: true
-    sql:
-      init:
-        mode: never         # chỉ tạo schema nếu thiếu
+    defer-datasource-initialization: true  # để data.sql chạy đúng thứ tự khi cần
+
+  sql:
+    init:
+      mode: always                         # bật chạy schema.sql / data.sql
+      schema-locations: file:./schema.sql
+      #data-locations: classpath:data.sql, classpath:recompute.sql
+      continue-on-error: true              # tùy chọn: không fail khi đã tồn tại
 
 server:
   port: 8080

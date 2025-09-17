@@ -15,4 +15,5 @@ public class UserAccount extends BaseEntity {
     @ManyToOne
     private School school;
 
+
 }
