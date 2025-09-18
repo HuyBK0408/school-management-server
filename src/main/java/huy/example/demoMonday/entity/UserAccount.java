@@ -1,5 +1,6 @@
 package huy.example.demoMonday.entity;
 
+import huy.example.demoMonday.enums.SoftStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +15,10 @@ public class UserAccount extends BaseEntity {
     private String passwordHash; private String email; private String phone; private boolean enabled=true;
     @ManyToOne
     private School school;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "soft_status", nullable = false)
+    private SoftStatus softStatus = SoftStatus.ACTIVE;
 
 
 }

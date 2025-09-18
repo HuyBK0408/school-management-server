@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import huy.example.demoMonday.config.PreDbBootstrap;
 
 @SpringBootApplication(scanBasePackages = "huy.example.demoMonday")
-@EnableJpaRepositories(basePackages = "huy.example.demoMonday.repo")
+@EnableJpaRepositories(basePackages = "huy.example.demoMonday.repository")
 @EntityScan(basePackages = "huy.example.demoMonday.entity")
 public class DemoMondayApplication {
 

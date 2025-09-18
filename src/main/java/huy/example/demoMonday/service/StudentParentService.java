@@ -1,9 +1,9 @@
 package huy.example.demoMonday.service;
 
 import huy.example.demoMonday.entity.StudentParent;
-import huy.example.demoMonday.repo.ParentRepository;
-import huy.example.demoMonday.repo.StudentParentRepository;
-import huy.example.demoMonday.repo.StudentRepository;
+import huy.example.demoMonday.repository.ParentRepository;
+import huy.example.demoMonday.repository.StudentParentRepository;
+import huy.example.demoMonday.repository.StudentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

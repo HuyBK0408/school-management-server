@@ -1,4 +1,4 @@
-package huy.example.demoMonday.repo;
+package huy.example.demoMonday.repository;
 
 
 import huy.example.demoMonday.entity.UserAccount;
@@ -11,4 +11,11 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
     Optional<UserAccount> findByUsername(String username);
     boolean existsByUsername(String username);
     Optional<UserAccount> findByUsernameIgnoreCase(String username);
+
+    Optional<UserAccount> findByUsernameOrEmail(String username, String email);
+    boolean existsByEmail(String email);
+
+    boolean existsByUsernameIgnoreCase(String username);
+    boolean existsByEmailIgnoreCase(String email);
+
 }

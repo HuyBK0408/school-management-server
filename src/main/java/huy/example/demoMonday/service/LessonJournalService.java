@@ -2,10 +2,10 @@ package huy.example.demoMonday.service;
 
 
 import huy.example.demoMonday.entity.LessonJournal;
-import huy.example.demoMonday.repo.ClassRoomRepository;
-import huy.example.demoMonday.repo.LessonJournalRepository;
-import huy.example.demoMonday.repo.StaffRepository;
-import huy.example.demoMonday.repo.SubjectRepository;
+import huy.example.demoMonday.repository.ClassRoomRepository;
+import huy.example.demoMonday.repository.LessonJournalRepository;
+import huy.example.demoMonday.repository.StaffRepository;
+import huy.example.demoMonday.repository.SubjectRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

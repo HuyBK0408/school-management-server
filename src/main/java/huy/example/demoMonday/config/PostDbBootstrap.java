@@ -6,12 +6,12 @@ import huy.example.demoMonday.entity.Staff;
 import huy.example.demoMonday.entity.Student;
 import huy.example.demoMonday.entity.UserAccount;
 import huy.example.demoMonday.entity.UserRole;
-import huy.example.demoMonday.repo.ParentRepository;
-import huy.example.demoMonday.repo.RoleRepository;
-import huy.example.demoMonday.repo.StaffRepository;
-import huy.example.demoMonday.repo.StudentRepository;
-import huy.example.demoMonday.repo.UserAccountRepository;
-import huy.example.demoMonday.repo.UserRoleRepository;
+import huy.example.demoMonday.repository.ParentRepository;
+import huy.example.demoMonday.repository.RoleRepository;
+import huy.example.demoMonday.repository.StaffRepository;
+import huy.example.demoMonday.repository.StudentRepository;
+import huy.example.demoMonday.repository.UserAccountRepository;
+import huy.example.demoMonday.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Configuration

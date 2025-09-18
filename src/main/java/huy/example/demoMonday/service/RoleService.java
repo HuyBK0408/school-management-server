@@ -1,7 +1,7 @@
 package huy.example.demoMonday.service;
 
 import huy.example.demoMonday.entity.Role;
-import huy.example.demoMonday.repo.RoleRepository;
+import huy.example.demoMonday.repository.RoleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

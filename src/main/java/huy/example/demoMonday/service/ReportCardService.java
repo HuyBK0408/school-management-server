@@ -3,7 +3,7 @@ package huy.example.demoMonday.service;
 import huy.example.demoMonday.entity.ReportCard;
 import huy.example.demoMonday.entity.SchoolYear;
 import huy.example.demoMonday.entity.Student;
-import huy.example.demoMonday.repo.ReportCardRepository;
+import huy.example.demoMonday.repository.ReportCardRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

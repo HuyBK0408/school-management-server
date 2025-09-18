@@ -1,4 +1,4 @@
-package huy.example.demoMonday.repo;
+package huy.example.demoMonday.repository;
 
 
 import huy.example.demoMonday.entity.GradeLevel;

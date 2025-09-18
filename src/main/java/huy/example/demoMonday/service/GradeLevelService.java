@@ -1,8 +1,8 @@
 package huy.example.demoMonday.service;
 
 import huy.example.demoMonday.entity.GradeLevel;
-import huy.example.demoMonday.repo.GradeLevelRepository;
-import huy.example.demoMonday.repo.SchoolRepository;
+import huy.example.demoMonday.repository.GradeLevelRepository;
+import huy.example.demoMonday.repository.SchoolRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
