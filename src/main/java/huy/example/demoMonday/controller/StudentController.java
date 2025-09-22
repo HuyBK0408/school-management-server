@@ -1,10 +1,12 @@
 package huy.example.demoMonday.controller;
 
+import huy.example.demoMonday.dto.auth.CreateAccountReq;
 import huy.example.demoMonday.dto.request.StudentReq;
 import huy.example.demoMonday.dto.response.ApiResponse;
 import huy.example.demoMonday.dto.response.StudentResp;
 import huy.example.demoMonday.service.StudentService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,9 +17,10 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/students")
+@RequiredArgsConstructor
 public class StudentController {
+
     private final StudentService service;
-    public StudentController(StudentService service){ this.service = service; }
 
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN','TEACHER','STAFF','PARENT')")
     @GetMapping
@@ -30,7 +33,7 @@ public class StudentController {
     }
 
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN','TEACHER','STAFF','PARENT')")
-    @GetMapping("/<built-in function id>")
+    @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentResp>> one(@PathVariable UUID id){
         return ResponseEntity.ok(ApiResponse.<StudentResp>build().ok(service.get(id)).done());
     }
@@ -42,16 +45,24 @@ public class StudentController {
     }
 
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN','TEACHER','STAFF')")
-    @PutMapping("/<built-in function id>")
+    @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentResp>> update(@PathVariable UUID id, @Valid @RequestBody StudentReq req){
         return ResponseEntity.ok(ApiResponse.<StudentResp>build().ok(service.update(id, req)).message("Updated").done());
     }
 
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN')")
-    @DeleteMapping("/<built-in function id>")
+    @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id){
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Deleted").done());
     }
-}
 
+    /** ✅ chỉ gọi service – service sẽ tự tạo account & gửi email */
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN')")
+    @PostMapping("/{id}/create-account")
+    public ResponseEntity<ApiResponse<Void>> createAccount(@PathVariable UUID id,
+                                                           @Valid @RequestBody CreateAccountReq req) {
+        service.createAccount(id, req);
+        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã tạo tài khoản và gửi email xác thực.").done());
+    }
+}

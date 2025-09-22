@@ -1,5 +1,6 @@
 package huy.example.demoMonday.service;
 
+import huy.example.demoMonday.dto.auth.CreateAccountReq;
 import huy.example.demoMonday.entity.Staff;
 import huy.example.demoMonday.repository.SchoolRepository;
 import huy.example.demoMonday.repository.StaffRepository;
@@ -8,13 +9,16 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 public class StaffService {
     private final StaffRepository repo;
     private final SchoolRepository schoolRepo;
     private final UserAccountRepository userAccountRepo;
-    public StaffService(StaffRepository repo, SchoolRepository schoolRepo, UserAccountRepository userAccountRepo) {
-        this.repo = repo; this.schoolRepo = schoolRepo; this.userAccountRepo = userAccountRepo;
+    private final AuthService authService;
+    public StaffService(StaffRepository repo, SchoolRepository schoolRepo, UserAccountRepository userAccountRepo, AuthService authService) {
+        this.repo = repo; this.schoolRepo = schoolRepo; this.userAccountRepo = userAccountRepo; this.authService = authService;
     }
 
     private huy.example.demoMonday.dto.response.StaffResp toDto(Staff e){
@@ -58,4 +62,15 @@ public class StaffService {
 
     @Transactional
     public void delete(java.util.UUID id){ repo.deleteById(id); }
+
+    @Transactional
+    public void createAccount(UUID staffId, CreateAccountReq req) {
+        Staff st = repo.findById(staffId)
+                .orElseThrow(() -> new RuntimeException("Không thấy giáo viên/nhân viên"));
+        if (st.getUser() != null) throw new RuntimeException("Đã có tài khoản");
+
+        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getPassword(), "TEACHER");
+        st.setUser(user);
+        repo.save(st);
+    }
 }

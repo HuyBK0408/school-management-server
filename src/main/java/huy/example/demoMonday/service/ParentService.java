@@ -1,5 +1,6 @@
 package huy.example.demoMonday.service;
 
+import huy.example.demoMonday.dto.auth.CreateAccountReq;
 import huy.example.demoMonday.entity.Parent;
 import huy.example.demoMonday.repository.ParentRepository;
 import huy.example.demoMonday.repository.UserAccountRepository;
@@ -7,12 +8,15 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 public class ParentService {
     private final ParentRepository repo;
     private final UserAccountRepository userAccountRepo;
-    public ParentService(ParentRepository repo, UserAccountRepository userAccountRepo) {
-        this.repo = repo; this.userAccountRepo = userAccountRepo;
+    private final AuthService authService;
+    public ParentService(ParentRepository repo, UserAccountRepository userAccountRepo, AuthService authService) {
+        this.repo = repo; this.userAccountRepo = userAccountRepo; this.authService = authService;
     }
 
     private huy.example.demoMonday.dto.response.ParentResp toDto(Parent e){
@@ -53,5 +57,15 @@ public class ParentService {
 
     @Transactional
     public void delete(java.util.UUID id){ repo.deleteById(id); }
+    @Transactional
+    public void createAccount(UUID parentId, CreateAccountReq req) {
+        Parent p = repo.findById(parentId)
+                .orElseThrow(() -> new RuntimeException("Không thấy phụ huynh"));
+        if (p.getUser() != null) throw new RuntimeException("Phụ huynh đã có tài khoản");
+
+        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getPassword(), "PARENT");
+        p.setUser(user);
+        repo.save(p);
+    }
 }
 

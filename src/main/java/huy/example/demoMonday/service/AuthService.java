@@ -2,11 +2,11 @@ package huy.example.demoMonday.service;
 
 import huy.example.demoMonday.dto.auth.*;
 import huy.example.demoMonday.entity.*;
-import huy.example.demoMonday.enums.Gender;
-
 import huy.example.demoMonday.enums.SoftStatus;
 import huy.example.demoMonday.repository.*;
 import huy.example.demoMonday.security.JwtService;
+import huy.example.demoMonday.security.PasswordSaltUtils;
+import huy.example.demoMonday.security.ProtectedAdminGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -39,20 +39,10 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
     private final EmailService emailService;
+    private final ProtectedAdminGuard protectedGuard;
 
-    // ====== LOGIN (giữ nguyên API cũ của bạn) ======
-    public String login(String username, String rawPassword) {
-        var user = userRepo.findByUsernameIgnoreCase(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        if (!user.isEnabled()) throw new RuntimeException("User disabled");
-        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash()))
-            throw new RuntimeException("Invalid credentials");
+    /* ======================= Helpers ======================= */
 
-        var roles = userRoleRepo.findRoleCodesByUserId(user.getId());
-        return jwt.generate(user.getUsername(), roles);
-    }
-
-    // ====== Helpers ======
     private static String randomCode(int len){
         String alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
         StringBuilder sb = new StringBuilder(len);
@@ -60,6 +50,7 @@ public class AuthService {
         for(int i=0;i<len;i++) sb.append(alpha.charAt(r.nextInt(alpha.length())));
         return sb.toString();
     }
+
     private static String sha256(String s){
         try{
             var md = java.security.MessageDigest.getInstance("SHA-256");
@@ -70,18 +61,47 @@ public class AuthService {
         }catch (Exception e){ throw new RuntimeException(e); }
     }
 
+    /** So khớp password theo salt mới (raw+salt) hoặc legacy (raw-only) và tự nâng cấp nếu legacy khớp */
+    private boolean upgradeIfLegacyAndMatches(UserAccount u, String raw) {
+        if (passwordEncoder.matches(raw, u.getPasswordHash())) {
+            String newSalt = PasswordSaltUtils.newUserSaltBase64(32);
+            u.setPasswordSalt(newSalt);
+            u.setPasswordHash(passwordEncoder.encode(raw + newSalt));
+            userRepo.save(u);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean matchesWithSaltOrLegacy(UserAccount u, String raw) {
+        String salt = u.getPasswordSalt();
+        String hash = u.getPasswordHash();
+
+        if (salt != null && !salt.isBlank()) {
+            if (passwordEncoder.matches(raw + salt, hash)) return true;
+            return upgradeIfLegacyAndMatches(u, raw);
+        }
+        return upgradeIfLegacyAndMatches(u, raw);
+    }
+
+    /* ======================= Core: tạo UserAccount + gửi email verify ======================= */
+
     private UserAccount createUser(String username, String email, String rawPassword, String roleCode){
         if (userRepo.existsByUsernameIgnoreCase(username)) throw new RuntimeException("Username đã tồn tại");
         if (userRepo.existsByEmailIgnoreCase(email)) throw new RuntimeException("Email đã tồn tại");
 
         var role = roleRepo.findByCode(roleCode)
-                .orElseThrow(() -> new RuntimeException("Role không hợp lệ: "+roleCode));
+                .orElseThrow(() -> new RuntimeException("Role không hợp lệ: " + roleCode));
 
         var user = new UserAccount();
         user.setUsername(username);
         user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(rawPassword));
-        user.setEnabled(false); // bật sau khi verify email
+
+        String userSalt = PasswordSaltUtils.newUserSaltBase64(32); // ~44 chars base64
+        user.setPasswordSalt(userSalt);
+        user.setPasswordHash(passwordEncoder.encode(rawPassword + userSalt)); // {id}encoded
+
+        user.setEnabled(false); // bật sau verify email
         user.setSoftStatus(SoftStatus.ACTIVE);
         userRepo.save(user);
 
@@ -90,7 +110,6 @@ public class AuthService {
         ur.setRole(role);
         userRoleRepo.save(ur);
 
-        // gửi mã xác thực
         var code = randomCode(6);
         var vc = new VerificationCode();
         vc.setEmail(email);
@@ -99,11 +118,40 @@ public class AuthService {
         vc.setExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
         codeRepo.save(vc);
 
-        emailService.send(email, "[School] Verify your email", "Mã xác thực: "+code+" (hết hạn 15 phút)");
+        emailService.send(email, "[School] Verify your email", "Mã xác thực: " + code + " (hết hạn 15 phút)");
         return user;
     }
 
-    // ====== REGISTER: STUDENT ======
+    /** Public façade để domain service gọi khi cần tạo tài khoản cho hồ sơ sẵn có */
+    @Transactional
+    public UserAccount registerUser(String username, String email, String rawPassword, String roleCode) {
+        return createUser(username, email, rawPassword, roleCode);
+
+    }
+
+    /** (Tuỳ chọn) Admin tạo user độc lập */
+    @Transactional
+    public UserAccount adminCreateUser(AdminCreateUserReq req) {
+        return createUser(req.getUsername(), req.getEmail(), req.getPassword(), req.getRoleCode());
+    }
+
+    /* ======================= LOGIN ======================= */
+
+    /** Login cũ: trả về access token ngắn (giữ API cũ) */
+    public String login(String username, String rawPassword) {
+        var user = userRepo.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!user.isEnabled()) throw new RuntimeException("User disabled");
+
+        if (!matchesWithSaltOrLegacy(user, rawPassword))
+            throw new RuntimeException("Invalid credentials");
+
+        var roles = userRoleRepo.findRoleCodesByUserId(user.getId());
+        return jwt.generate(user.getUsername(), roles);
+    }
+
+    /* ======================= REGISTER qua /auth/register/* ======================= */
+
     @Transactional
     public void registerStudent(StudentRegisterReq req){
         var user = createUser(req.getUsername(), req.getEmail(), req.getPassword(), "STUDENT");
@@ -132,7 +180,6 @@ public class AuthService {
         studentRepo.save(s);
     }
 
-    // ====== REGISTER: TEACHER ======
     @Transactional
     public void registerTeacher(TeacherRegisterReq req){
         var user = createUser(req.getUsername(), req.getEmail(), req.getPassword(), "TEACHER");
@@ -148,13 +195,12 @@ public class AuthService {
         staff.setGender(req.getGender());
         staff.setPhone(req.getPhone());
         staff.setEmail(req.getEmail());
-        staff.setPosition(req.getPosition()); // SUBJECT_TEACHER / HOMEROOM_TEACHER / BOTH …
+        staff.setPosition(req.getPosition());
         staff.setSchool(school);
         staff.setUser(user);
         staffRepo.save(staff);
     }
 
-    // ====== REGISTER: PARENT ======
     @Transactional
     public void registerParent(ParentRegisterReq req){
         var user = createUser(req.getUsername(), req.getEmail(), req.getPassword(), "PARENT");
@@ -172,7 +218,7 @@ public class AuthService {
 
         for(String studentCode: req.getChildStudentCodes()){
             var stu = studentRepo.findByStudentCode(studentCode)
-                    .orElseThrow(() -> new RuntimeException("Không thấy học sinh code: "+studentCode));
+                    .orElseThrow(() -> new RuntimeException("Không thấy học sinh code: " + studentCode));
             var sp = new StudentParent();
             sp.setStudent(stu);
             sp.setParent(parent);
@@ -180,7 +226,8 @@ public class AuthService {
         }
     }
 
-    // ====== VERIFY EMAIL ======
+    /* ======================= VERIFY / TOKENS / FORGOT / RESET ======================= */
+
     @Transactional
     public void verifyEmail(VerifyEmailReq req){
         var vc = codeRepo.findTopByEmailAndTypeAndUsedFalseOrderByCreatedAtDesc(req.getEmail(), "SIGNUP")
@@ -197,7 +244,6 @@ public class AuthService {
         userRepo.save(user);
     }
 
-    // ====== ISSUE TOKENS ======
     public Map<String,String> issueTokens(UserAccount u){
         var roles = userRoleRepo.findRoleCodesByUserId(u.getId());
         var access = jwt.generate(u.getUsername(), roles);
@@ -215,18 +261,18 @@ public class AuthService {
         return out;
     }
 
-    // ====== LOGIN (username or email) -> pair tokens ======
     @Transactional
     public Map<String,String> login2(LoginReq req){
         var u = userRepo.findByUsernameOrEmail(req.getUsernameOrEmail(), req.getUsernameOrEmail())
                 .orElseThrow(() -> new RuntimeException("Sai thông tin"));
         if (!u.isEnabled()) throw new RuntimeException("Chưa xác thực email");
-        if (!passwordEncoder.matches(req.getPassword(), u.getPasswordHash()))
+
+        if (!matchesWithSaltOrLegacy(u, req.getPassword()))
             throw new RuntimeException("Sai thông tin");
+
         return issueTokens(u);
     }
 
-    // ====== REFRESH ======
     @Transactional
     public Map<String,String> refresh(String refreshPlain){
         var rt = refreshRepo.findByTokenHash(sha256(refreshPlain))
@@ -236,7 +282,6 @@ public class AuthService {
         return issueTokens(rt.getUser());
     }
 
-    // ====== LOGOUT ======
     @Transactional
     public void logout(String accessToken, String refreshPlain){
         if (accessToken!=null && !accessToken.isBlank()){
@@ -251,11 +296,13 @@ public class AuthService {
         }
     }
 
-    // ====== FORGOT / RESET PASSWORD ======
     @Transactional
     public void forgotPassword(ForgotPasswordReq req){
         var u = userRepo.findByUsernameOrEmail(req.getEmail(), req.getEmail())
                 .orElseThrow(() -> new RuntimeException("Không thấy user"));
+
+        if (protectedGuard.isProtected(u.getUsername(), u.getEmail()))
+            throw new RuntimeException("Tài khoản được bảo vệ; liên hệ quản trị.");
 
         var code = randomCode(6);
         var vc = new VerificationCode();
@@ -265,7 +312,7 @@ public class AuthService {
         vc.setExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES));
         codeRepo.save(vc);
 
-        emailService.send(u.getEmail(), "[School] Reset password", "Mã đặt lại mật khẩu: "+code);
+        emailService.send(u.getEmail(), "[School] Reset password", "Mã đặt lại mật khẩu: " + code);
     }
 
     @Transactional
@@ -279,9 +326,32 @@ public class AuthService {
 
         var u = userRepo.findByUsernameOrEmail(req.getEmail(), req.getEmail())
                 .orElseThrow(() -> new RuntimeException("Không thấy user"));
-        u.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
+
+        if (protectedGuard.isProtected(u.getUsername(), u.getEmail()))
+            throw new RuntimeException("Tài khoản được bảo vệ; liên hệ quản trị.");
+
+        String newSalt = PasswordSaltUtils.newUserSaltBase64(32);
+        u.setPasswordSalt(newSalt);
+        u.setPasswordHash(passwordEncoder.encode(req.getNewPassword() + newSalt));
         userRepo.save(u);
 
         vc.setUsed(true); codeRepo.save(vc);
+    }
+
+    /* ======================= (Optional) Resend verify ======================= */
+
+    @Transactional
+    public void resendVerifyEmail(String email){
+        codeRepo.findByEmailAndType(email, "SIGNUP").ifPresent(codeRepo::delete);
+
+        var code = randomCode(6);
+        var vc = new VerificationCode();
+        vc.setEmail(email);
+        vc.setCode(code);
+        vc.setType("SIGNUP");
+        vc.setExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+        codeRepo.save(vc);
+
+        emailService.send(email, "[School] Verify your email", "Mã xác thực: " + code + " (hết hạn 15 phút)");
     }
 }
