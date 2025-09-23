@@ -1,4 +1,4 @@
-package huy.example.demoMonday.security;
+package huy.example.demoMonday.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -19,7 +19,7 @@ public class JwtService {
     private final String SECRET = System.getenv().getOrDefault("JWT_SECRET","CHANGE_THIS_SUPER_SECRET_256_BITS_KEY_1234567890");
     private Key key(){ return Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)); }
     public String generate(String username, List<String> roles){
-        var now = new Date(); var exp = new Date(now.getTime() + 1000L*60*60*8);
+        var now = new Date(); var exp = new Date(now.getTime() + 1000L*60*60 );
         return Jwts.builder().setSubject(username).claim("roles", roles).setIssuedAt(now).setExpiration(exp)
                 .signWith(key(), SignatureAlgorithm.HS256).compact();
     }

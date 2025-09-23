@@ -1,6 +1,6 @@
 package huy.example.demoMonday.service;
 
-import huy.example.demoMonday.dto.auth.CreateAccountReq;
+import huy.example.demoMonday.dto.request.CreateAccountReq;
 import huy.example.demoMonday.entity.Staff;
 import huy.example.demoMonday.repository.SchoolRepository;
 import huy.example.demoMonday.repository.StaffRepository;

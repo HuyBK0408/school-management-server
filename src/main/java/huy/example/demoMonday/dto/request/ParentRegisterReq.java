@@ -1,4 +1,4 @@
-package huy.example.demoMonday.dto.auth;
+package huy.example.demoMonday.dto.request;
 
 import huy.example.demoMonday.enums.RelationType;
 import jakarta.validation.constraints.*;

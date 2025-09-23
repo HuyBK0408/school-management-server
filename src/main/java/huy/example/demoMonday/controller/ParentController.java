@@ -1,6 +1,6 @@
 package huy.example.demoMonday.controller;
 
-import huy.example.demoMonday.dto.auth.CreateAccountReq;
+import huy.example.demoMonday.dto.request.CreateAccountReq;
 import huy.example.demoMonday.dto.request.ParentReq;
 import huy.example.demoMonday.dto.response.ApiResponse;
 import huy.example.demoMonday.dto.response.ParentResp;

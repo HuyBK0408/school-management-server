@@ -1,14 +1,14 @@
-package huy.example.demoMonday.dto.auth;
+package huy.example.demoMonday.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import huy.example.demoMonday.enums.RelationType;
+import huy.example.demoMonday.enums.StaffPosition;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record ParentRegisterRequest(
+public record StaffRegisterReq(
         @NotBlank String fullName,
         @JsonFormat(shape = JsonFormat.Shape.STRING)
-        @NotNull RelationType relationType,
+        @NotNull StaffPosition position,
         @NotBlank String username,
         @NotBlank String password
 ) {}

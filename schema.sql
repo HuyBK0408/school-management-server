@@ -97,7 +97,26 @@ CREATE TABLE IF NOT EXISTS public.token_blacklist (
     expires_at     timestamptz(6),
     CONSTRAINT uk_token_blacklist_hash UNIQUE (token_hash)
     );
+-- ======================
+-- AUTH SUPPORT (refresh token store)
+-- ======================
+CREATE TABLE IF NOT EXISTS public.refresh_token (
+                                                    id          uuid PRIMARY KEY,
+                                                    created_at  timestamptz(6) NOT NULL DEFAULT now(),
+    updated_at  timestamptz(6) NOT NULL DEFAULT now(),
 
+    token_hash  varchar(255)   NOT NULL,
+    user_id     uuid           NOT NULL,
+    expires_at  timestamptz(6) NOT NULL,
+    revoked     boolean        NOT NULL DEFAULT false,
+
+    CONSTRAINT uk_refresh_token_hash UNIQUE (token_hash),
+    CONSTRAINT fk_refresh_token_user FOREIGN KEY (user_id)
+    REFERENCES public.user_account(id) ON DELETE CASCADE
+    );
+
+CREATE INDEX IF NOT EXISTS idx_refresh_token_user ON public.refresh_token(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_token_exp  ON public.refresh_token(expires_at);
 -- ======================
 -- School structure
 -- ======================

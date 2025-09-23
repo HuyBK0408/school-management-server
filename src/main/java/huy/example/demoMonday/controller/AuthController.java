@@ -1,9 +1,8 @@
 package huy.example.demoMonday.controller;
 
-import huy.example.demoMonday.dto.auth.*;
-import huy.example.demoMonday.dto.request.LoginRequest;
+import huy.example.demoMonday.dto.request.*;
 import huy.example.demoMonday.dto.response.ApiResponse;
-import huy.example.demoMonday.security.JwtService;
+import huy.example.demoMonday.service.JwtService;
 import huy.example.demoMonday.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

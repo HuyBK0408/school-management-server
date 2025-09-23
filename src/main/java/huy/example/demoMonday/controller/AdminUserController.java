@@ -1,7 +1,7 @@
 package huy.example.demoMonday.controller;
 
 
-import huy.example.demoMonday.dto.auth.AdminCreateUserReq;
+import huy.example.demoMonday.dto.request.AdminCreateUserReq;
 import huy.example.demoMonday.dto.response.ApiResponse;
 import huy.example.demoMonday.entity.UserAccount;
 import huy.example.demoMonday.service.AuthService;

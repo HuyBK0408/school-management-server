@@ -1,4 +1,4 @@
-package huy.example.demoMonday.dto.auth;
+package huy.example.demoMonday.dto.request;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
