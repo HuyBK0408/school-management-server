@@ -69,7 +69,7 @@ public class StaffService {
                 .orElseThrow(() -> new RuntimeException("Không thấy giáo viên/nhân viên"));
         if (st.getUser() != null) throw new RuntimeException("Đã có tài khoản");
 
-        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getPassword(), "TEACHER");
+        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "TEACHER");
         st.setUser(user);
         repo.save(st);
     }

@@ -72,7 +72,7 @@ public class StudentService {
                 .orElseThrow(() -> new RuntimeException("Không thấy học sinh"));
         if (s.getUser() != null) throw new RuntimeException("Học sinh đã có tài khoản");
 
-        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getPassword(), "STUDENT");
+        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "STUDENT");
         s.setUser(user);
         repo.save(s);
     }

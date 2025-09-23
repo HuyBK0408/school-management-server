@@ -63,7 +63,7 @@ public class ParentService {
                 .orElseThrow(() -> new RuntimeException("Không thấy phụ huynh"));
         if (p.getUser() != null) throw new RuntimeException("Phụ huynh đã có tài khoản");
 
-        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getPassword(), "PARENT");
+        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "PARENT");
         p.setUser(user);
         repo.save(p);
     }

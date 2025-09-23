@@ -7,5 +7,8 @@ import lombok.Data;
 public class ResetPasswordReq {
     @Email @NotBlank private String email;
     @NotBlank private String code;
-    @NotBlank private String newPassword;
+    @Pattern(
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^\\w\\s]).{8,64}$",
+            message = "Mật khẩu 8-64 ký tự, có hoa, thường, số, ký tự đặc biệt")
+    private String newPassword;
 }

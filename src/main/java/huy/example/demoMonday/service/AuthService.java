@@ -4,9 +4,11 @@ import huy.example.demoMonday.dto.request.*;
 import huy.example.demoMonday.entity.*;
 import huy.example.demoMonday.enums.SoftStatus;
 import huy.example.demoMonday.repository.*;
+import huy.example.demoMonday.security.LoginRateLimiter;
 import huy.example.demoMonday.security.PasswordSaltUtils;
 import huy.example.demoMonday.security.ProtectedAdminGuard;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value; // ✅ thêm
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,11 @@ public class AuthService {
     private final JwtService jwt;
     private final EmailService emailService;
     private final ProtectedAdminGuard protectedGuard;
+    private final LoginRateLimiter loginRateLimiter;
+
+    // ✅ đọc TTL refresh từ cấu hình thay vì hard-code 7 ngày
+    @Value("${spring.security.jwt.refresh-days:7}")
+    private int refreshDays;
 
     /* ======================= Helpers ======================= */
 
@@ -125,7 +132,6 @@ public class AuthService {
     @Transactional
     public UserAccount registerUser(String username, String email, String rawPassword, String roleCode) {
         return createUser(username, email, rawPassword, roleCode);
-
     }
 
     /** (Tuỳ chọn) Admin tạo user độc lập */
@@ -134,26 +140,14 @@ public class AuthService {
         return createUser(req.getUsername(), req.getEmail(), req.getPassword(), req.getRoleCode());
     }
 
-    /* ======================= LOGIN ======================= */
 
-    /** Login cũ: trả về access token ngắn (giữ API cũ) */
-    public String login(String username, String rawPassword) {
-        var user = userRepo.findByUsernameIgnoreCase(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        if (!user.isEnabled()) throw new RuntimeException("User disabled");
 
-        if (!matchesWithSaltOrLegacy(user, rawPassword))
-            throw new RuntimeException("Invalid credentials");
-
-        var roles = userRoleRepo.findRoleCodesByUserId(user.getId());
-        return jwt.generate(user.getUsername(), roles);
-    }
 
     /* ======================= REGISTER qua /auth/register/* ======================= */
 
     @Transactional
     public void registerStudent(StudentRegisterReq req){
-        var user = createUser(req.getUsername(), req.getEmail(), req.getPassword(), "STUDENT");
+        var user = createUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "STUDENT");
 
         var school = schoolRepo.findById(req.getSchoolId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy school"));
@@ -181,7 +175,7 @@ public class AuthService {
 
     @Transactional
     public void registerTeacher(TeacherRegisterReq req){
-        var user = createUser(req.getUsername(), req.getEmail(), req.getPassword(), "TEACHER");
+        var user = createUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "TEACHER");
 
         var school = schoolRepo.findById(req.getSchoolId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy school"));
@@ -202,7 +196,7 @@ public class AuthService {
 
     @Transactional
     public void registerParent(ParentRegisterReq req){
-        var user = createUser(req.getUsername(), req.getEmail(), req.getPassword(), "PARENT");
+        var user = createUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "PARENT");
 
         var parent = parentRepo.findByEmailIgnoreCase(req.getEmail()).orElseGet(Parent::new);
         if (parent.getUser()!=null) throw new RuntimeException("Phụ huynh đã có tài khoản");
@@ -243,15 +237,19 @@ public class AuthService {
         userRepo.save(user);
     }
 
+    // ✅ đọc thời điểm hiện tại một chỗ
+    private Instant now() { return Instant.now(); }
+
+    // ✅ phát hành cặp token; TTL refresh lấy từ cấu hình
     public Map<String,String> issueTokens(UserAccount u){
         var roles = userRoleRepo.findRoleCodesByUserId(u.getId());
         var access = jwt.generate(u.getUsername(), roles);
 
-        var refreshPlain = UUID.randomUUID()+"."+UUID.randomUUID();
+        var refreshPlain = UUID.randomUUID() + "." + UUID.randomUUID();
         var rt = new RefreshToken();
         rt.setUser(u);
         rt.setTokenHash(sha256(refreshPlain));
-        rt.setExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS));
+        rt.setExpiresAt(now().plus(refreshDays, ChronoUnit.DAYS));
         refreshRepo.save(rt);
 
         var out = new HashMap<String,String>();
@@ -262,22 +260,57 @@ public class AuthService {
 
     @Transactional
     public Map<String,String> login2(LoginReq req){
-        var u = userRepo.findByUsernameOrEmail(req.getUsernameOrEmail(), req.getUsernameOrEmail())
-                .orElseThrow(() -> new RuntimeException("Sai thông tin"));
-        if (!u.isEnabled()) throw new RuntimeException("Chưa xác thực email");
+        String userInput = req.getUsernameOrEmail();
+        String ip = huy.example.demoMonday.security.IpUtil.clientIp();
 
-        if (!matchesWithSaltOrLegacy(u, req.getPassword()))
+        // ✅ Chặn nếu đang bị khoá
+        if (loginRateLimiter.isLocked(userInput, ip)) {
+            var until = loginRateLimiter.lockedUntil(userInput, ip);
+            throw new RuntimeException("Tài khoản/IP tạm khoá do nhập sai nhiều lần. Hết khoá lúc: " + until);
+        }
+
+        // Tìm user (không để lộ thông tin tồn tại hay không)
+        var opt = userRepo.findByUsernameOrEmail(userInput, userInput);
+        if (opt.isEmpty()) {
+            // ✅ ghi nhận thất bại kể cả khi user không tồn tại (giảm dò username)
+            loginRateLimiter.recordFailure(userInput, ip);
             throw new RuntimeException("Sai thông tin");
+        }
+
+        var u = opt.get();
+        if (!u.isEnabled()) {
+            // có thể không tính là thất bại để tránh khoá user hợp lệ chưa verify
+            throw new RuntimeException("Chưa xác thực email");
+        }
+
+        if (!matchesWithSaltOrLegacy(u, req.getPassword())) {
+            // ✅ ghi nhận thất bại khi sai mật khẩu
+            loginRateLimiter.recordFailure(userInput, ip);
+            int remain = loginRateLimiter.remainingAttempts(userInput, ip);
+            throw new RuntimeException("Sai thông tin (còn " + remain + " lần thử)");
+        }
+
+        // ✅ đăng nhập thành công -> reset đếm
+        loginRateLimiter.reset(userInput, ip);
+
+        // (tuỳ chọn) enforce single-session: revoke toàn bộ refresh cũ của user này
+        // refreshRepo.revokeAllByUserId(u.getId());
 
         return issueTokens(u);
     }
+
 
     @Transactional
     public Map<String,String> refresh(String refreshPlain){
         var rt = refreshRepo.findByTokenHash(sha256(refreshPlain))
                 .orElseThrow(() -> new RuntimeException("Refresh không hợp lệ"));
-        if (rt.isRevoked() || rt.getExpiresAt().isBefore(Instant.now()))
+        if (rt.isRevoked() || rt.getExpiresAt().isBefore(now()))
             throw new RuntimeException("Refresh đã thu hồi/hết hạn");
+
+        // ✅ Xoay vòng refresh: revoke cái đang dùng trước khi cấp cặp mới
+        rt.setRevoked(true);
+        refreshRepo.save(rt);
+
         return issueTokens(rt.getUser());
     }
 
@@ -308,7 +341,7 @@ public class AuthService {
         vc.setEmail(u.getEmail());
         vc.setCode(code);
         vc.setType("RESET");
-        vc.setExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES));
+        vc.setExpiresAt(now().plus(10, ChronoUnit.MINUTES));
         codeRepo.save(vc);
 
         emailService.send(u.getEmail(), "[School] Reset password", "Mã đặt lại mật khẩu: " + code);
@@ -318,7 +351,7 @@ public class AuthService {
     public void resetPassword(ResetPasswordReq req){
         var vc = codeRepo.findTopByEmailAndTypeAndUsedFalseOrderByCreatedAtDesc(req.getEmail(), "RESET")
                 .orElseThrow(() -> new RuntimeException("Không thấy mã"));
-        if (vc.isUsed() || vc.getExpiresAt().isBefore(Instant.now()))
+        if (vc.isUsed() || vc.getExpiresAt().isBefore(now()))
             throw new RuntimeException("Mã đã dùng/hết hạn");
         if (!vc.getCode().equalsIgnoreCase(req.getCode()))
             throw new RuntimeException("Mã không đúng");
@@ -335,6 +368,9 @@ public class AuthService {
         userRepo.save(u);
 
         vc.setUsed(true); codeRepo.save(vc);
+
+        // (tuỳ chọn an toàn hơn) revoke tất cả refresh tokens của user sau reset mật khẩu
+        // refreshRepo.revokeAllByUserId(u.getId());
     }
 
     /* ======================= (Optional) Resend verify ======================= */
@@ -348,7 +384,7 @@ public class AuthService {
         vc.setEmail(email);
         vc.setCode(code);
         vc.setType("SIGNUP");
-        vc.setExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+        vc.setExpiresAt(now().plus(15, ChronoUnit.MINUTES));
         codeRepo.save(vc);
 
         emailService.send(email, "[School] Verify your email", "Mã xác thực: " + code + " (hết hạn 15 phút)");

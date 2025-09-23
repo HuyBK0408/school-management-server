@@ -28,11 +28,7 @@ public class AuthController {
     }
 
     // Login cũ (trả về access token ngắn gọn)
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<String>> login(@RequestBody LoginRequest req) {
-        String token = authService.login(req.getUsername(), req.getPassword());
-        return ResponseEntity.ok(ApiResponse.<String>build().ok(token).message("OK").done());
-    }
+
 
     // Đăng ký
     @PostMapping("/register/student")
@@ -67,17 +63,19 @@ public class AuthController {
 
     // Refresh
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<Map<String,String>>> refresh(@RequestParam String refreshToken){
-        var out = authService.refresh(refreshToken);
+    public ResponseEntity<ApiResponse<Map<String,String>>> refresh(@Valid @RequestBody RefreshTokenReq req){
+        var out = authService.refresh(req.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.<Map<String,String>>build().ok(out).message("OK").done());
     }
 
-    // Logout
+
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@RequestHeader(name="Authorization", required=false) String authz,
-                                                    @RequestParam(required=false) String refreshToken){
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader(name="Authorization", required=false) String authz,
+            @Valid @RequestBody(required=false) RefreshTokenReq req){
         String access = (authz!=null && authz.startsWith("Bearer ")) ? authz.substring(7) : null;
-        authService.logout(access, refreshToken);
+        String refresh = (req!=null ? req.getRefreshToken() : null);
+        authService.logout(access, refresh);
         return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã đăng xuất").done());
     }
 
