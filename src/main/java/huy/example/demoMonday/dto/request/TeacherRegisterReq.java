@@ -25,4 +25,5 @@ public class TeacherRegisterReq {
     /** SUBJECT_TEACHER / HOMEROOM_TEACHER / BOTH / OTHER */
     @NotNull private StaffPosition position;
     private String phone;
+    private String photoUrl;       // optional
 }

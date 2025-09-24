@@ -18,6 +18,7 @@ public class ParentRegisterReq {
     @NotBlank private String fullName;
     private String address;
     private String phone;
+    private String photoUrl;       // optional
 
     /** danh sách studentCode của con */
     @NotEmpty private List<@NotBlank String> childStudentCodes;

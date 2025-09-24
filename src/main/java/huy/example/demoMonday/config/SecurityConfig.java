@@ -36,12 +36,16 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/auth/register/**", "/auth/verify-email",
-                                "/auth/login2",
-                                "/auth/refresh", "/auth/forgot-password", "/auth/reset-password",
+                                // public register (multipart)
+                                "/auth/register/student", "/auth/register/teacher", "/auth/register/parent",
+                                "/auth/verify-email", "/auth/resend-verify",
+                                "/auth/login2", "/auth/refresh", "/auth/forgot-password", "/auth/reset-password",
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                                "/actuator/**"
+                                "/actuator/**",
+                                "/files/**"                 // ảnh public
                         ).permitAll()
+                        .requestMatchers("/auth/register/admin/**", "/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/profile/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

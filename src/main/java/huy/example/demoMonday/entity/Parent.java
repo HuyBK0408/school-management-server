@@ -18,6 +18,7 @@ public class Parent extends BaseEntity {
     private huy.example.demoMonday.enums.RelationType relationType;
     private String phone;
     private String email;
+    private String photoUrl;
     private String address;
     @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")

@@ -91,9 +91,9 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đặt lại mật khẩu thành công").done());
     }
     @PostMapping("/resend-verify")
-    public ResponseEntity<ApiResponse<Void>> resend(@RequestBody VerifyEmailReq req) {
+    public ResponseEntity<ApiResponse<Void>> resend(@RequestBody ResendVerifyReq req) {
         // req.email là bắt buộc; code không dùng ở đây
-        authService.resendVerifyEmail(req.getEmail());
+        authService.resendVerifyEmail(req.email());
         return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã gửi lại mã xác thực.").done());
     }
 

@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS public.staff (
     dob        date,
     email      varchar(255),
     full_name  varchar(255),
+    photo_url  varchar(255),
     gender     varchar(255),
     phone      varchar(255),
     "position" varchar(255),             -- SUBJECT_TEACHER / HOMEROOM_TEACHER / BOTH / OTHER
@@ -218,6 +219,7 @@ CREATE TABLE IF NOT EXISTS public.parent (
                                              created_at    timestamptz(6) NOT NULL,
     updated_at    timestamptz(6) NOT NULL,
     address       varchar(255),
+    photo_url     varchar(255),
     email         varchar(255),
     full_name     varchar(255),
     phone         varchar(255),

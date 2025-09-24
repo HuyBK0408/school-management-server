@@ -8,10 +8,12 @@ import huy.example.demoMonday.security.LoginRateLimiter;
 import huy.example.demoMonday.security.PasswordSaltUtils;
 import huy.example.demoMonday.security.ProtectedAdminGuard;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value; // ✅ thêm
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -43,8 +45,12 @@ public class AuthService {
     private final ProtectedAdminGuard protectedGuard;
     private final LoginRateLimiter loginRateLimiter;
 
-    // ✅ đọc TTL refresh từ cấu hình thay vì hard-code 7 ngày
-    @Value("${spring.security.jwt.refresh-days:7}")
+    // Hiện thông báo chi tiết khi login (dev/test). Production nên để false.
+    @Value("${security.login.reveal-detail:false}")
+    private boolean revealDetail;
+
+    // TTL refresh token (ngày) đọc từ cấu hình
+    @Value("${security.jwt.refresh-days:7}")
     private int refreshDays;
 
     /* ======================= Helpers ======================= */
@@ -53,7 +59,7 @@ public class AuthService {
         String alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
         StringBuilder sb = new StringBuilder(len);
         ThreadLocalRandom r = ThreadLocalRandom.current();
-        for(int i=0;i<len;i++) sb.append(alpha.charAt(r.nextInt(alpha.length())));
+        for (int i = 0; i < len; i++) sb.append(alpha.charAt(r.nextInt(alpha.length())));
         return sb.toString();
     }
 
@@ -62,12 +68,18 @@ public class AuthService {
             var md = java.security.MessageDigest.getInstance("SHA-256");
             byte[] d = md.digest(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             var sb = new StringBuilder();
-            for(byte b: d) sb.append(String.format("%02x", b));
+            for (byte b: d) sb.append(String.format("%02x", b));
             return sb.toString();
         }catch (Exception e){ throw new RuntimeException(e); }
     }
 
-    /** So khớp password theo salt mới (raw+salt) hoặc legacy (raw-only) và tự nâng cấp nếu legacy khớp */
+    private Instant now() { return Instant.now(); }
+
+    private String detailOrGeneric(String detailed, String generic) {
+        return revealDetail ? detailed : generic;
+    }
+
+    /** So khớp password legacy (raw-only) & tự nâng cấp sang salt mới nếu khớp */
     private boolean upgradeIfLegacyAndMatches(UserAccount u, String raw) {
         if (passwordEncoder.matches(raw, u.getPasswordHash())) {
             String newSalt = PasswordSaltUtils.newUserSaltBase64(32);
@@ -79,10 +91,10 @@ public class AuthService {
         return false;
     }
 
+    /** So khớp theo salt mới (raw+salt) hoặc legacy */
     private boolean matchesWithSaltOrLegacy(UserAccount u, String raw) {
         String salt = u.getPasswordSalt();
         String hash = u.getPasswordHash();
-
         if (salt != null && !salt.isBlank()) {
             if (passwordEncoder.matches(raw + salt, hash)) return true;
             return upgradeIfLegacyAndMatches(u, raw);
@@ -93,20 +105,21 @@ public class AuthService {
     /* ======================= Core: tạo UserAccount + gửi email verify ======================= */
 
     private UserAccount createUser(String username, String email, String rawPassword, String roleCode){
-        if (userRepo.existsByUsernameIgnoreCase(username)) throw new RuntimeException("Username đã tồn tại");
-        if (userRepo.existsByEmailIgnoreCase(email)) throw new RuntimeException("Email đã tồn tại");
+        if (userRepo.existsByUsernameIgnoreCase(username))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username đã tồn tại");
+        if (userRepo.existsByEmailIgnoreCase(email))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
 
         var role = roleRepo.findByCode(roleCode)
-                .orElseThrow(() -> new RuntimeException("Role không hợp lệ: " + roleCode));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role không hợp lệ: " + roleCode));
 
         var user = new UserAccount();
         user.setUsername(username);
         user.setEmail(email);
 
-        String userSalt = PasswordSaltUtils.newUserSaltBase64(32); // ~44 chars base64
+        String userSalt = PasswordSaltUtils.newUserSaltBase64(32);
         user.setPasswordSalt(userSalt);
-        user.setPasswordHash(passwordEncoder.encode(rawPassword + userSalt)); // {id}encoded
-
+        user.setPasswordHash(passwordEncoder.encode(rawPassword + userSalt));
         user.setEnabled(false); // bật sau verify email
         user.setSoftStatus(SoftStatus.ACTIVE);
         userRepo.save(user);
@@ -116,12 +129,13 @@ public class AuthService {
         ur.setRole(role);
         userRoleRepo.save(ur);
 
+        // phát mã verify
         var code = randomCode(6);
         var vc = new VerificationCode();
         vc.setEmail(email);
         vc.setCode(code);
         vc.setType("SIGNUP");
-        vc.setExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+        vc.setExpiresAt(now().plus(15, ChronoUnit.MINUTES));
         codeRepo.save(vc);
 
         emailService.send(email, "[School] Verify your email", "Mã xác thực: " + code + " (hết hạn 15 phút)");
@@ -140,9 +154,6 @@ public class AuthService {
         return createUser(req.getUsername(), req.getEmail(), req.getPassword(), req.getRoleCode());
     }
 
-
-
-
     /* ======================= REGISTER qua /auth/register/* ======================= */
 
     @Transactional
@@ -150,11 +161,11 @@ public class AuthService {
         var user = createUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "STUDENT");
 
         var school = schoolRepo.findById(req.getSchoolId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy school"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy school"));
 
         var studentOpt = studentRepo.findByStudentCode(req.getStudentCode());
         if (studentOpt.isPresent() && studentOpt.get().getUser()!=null)
-            throw new RuntimeException("Học sinh đã có tài khoản");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Học sinh đã có tài khoản");
 
         var s = studentOpt.orElseGet(Student::new);
         s.setFullName(req.getFullName());
@@ -167,7 +178,7 @@ public class AuthService {
         s.setUser(user);
         if (req.getCurrentClassId()!=null){
             var cls = classRoomRepo.findById(req.getCurrentClassId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy classRoom"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy classRoom"));
             s.setCurrentClass(cls);
         }
         studentRepo.save(s);
@@ -178,10 +189,10 @@ public class AuthService {
         var user = createUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "TEACHER");
 
         var school = schoolRepo.findById(req.getSchoolId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy school"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy school"));
 
         var staff = staffRepo.findByEmailIgnoreCase(req.getEmail()).orElseGet(Staff::new);
-        if (staff.getUser()!=null) throw new RuntimeException("Giáo viên đã có tài khoản");
+        if (staff.getUser()!=null) throw new ResponseStatusException(HttpStatus.CONFLICT, "Giáo viên đã có tài khoản");
 
         staff.setFullName(req.getFullName());
         staff.setDob(req.getDob());
@@ -191,6 +202,7 @@ public class AuthService {
         staff.setPosition(req.getPosition());
         staff.setSchool(school);
         staff.setUser(user);
+        staff.setPhotoUrl(req.getPhotoUrl());
         staffRepo.save(staff);
     }
 
@@ -199,7 +211,7 @@ public class AuthService {
         var user = createUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "PARENT");
 
         var parent = parentRepo.findByEmailIgnoreCase(req.getEmail()).orElseGet(Parent::new);
-        if (parent.getUser()!=null) throw new RuntimeException("Phụ huynh đã có tài khoản");
+        if (parent.getUser()!=null) throw new ResponseStatusException(HttpStatus.CONFLICT, "Phụ huynh đã có tài khoản");
 
         parent.setFullName(req.getFullName());
         parent.setRelationType(req.getRelationType());
@@ -207,11 +219,12 @@ public class AuthService {
         parent.setEmail(req.getEmail());
         parent.setAddress(req.getAddress());
         parent.setUser(user);
+        parent.setPhotoUrl(req.getPhotoUrl());
         parentRepo.save(parent);
 
-        for(String studentCode: req.getChildStudentCodes()){
+        for (String studentCode: req.getChildStudentCodes()){
             var stu = studentRepo.findByStudentCode(studentCode)
-                    .orElseThrow(() -> new RuntimeException("Không thấy học sinh code: " + studentCode));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không thấy học sinh code: " + studentCode));
             var sp = new StudentParent();
             sp.setStudent(stu);
             sp.setParent(parent);
@@ -224,23 +237,20 @@ public class AuthService {
     @Transactional
     public void verifyEmail(VerifyEmailReq req){
         var vc = codeRepo.findTopByEmailAndTypeAndUsedFalseOrderByCreatedAtDesc(req.getEmail(), "SIGNUP")
-                .orElseThrow(() -> new RuntimeException("Không thấy mã"));
-        if (vc.isUsed()) throw new RuntimeException("Mã đã dùng");
-        if (vc.getExpiresAt().isBefore(Instant.now())) throw new RuntimeException("Mã hết hạn");
-        if (!vc.getCode().equalsIgnoreCase(req.getCode())) throw new RuntimeException("Mã không đúng");
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thấy mã"));
+        if (vc.isUsed()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã đã dùng");
+        if (vc.getExpiresAt().isBefore(now())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hết hạn");
+        if (!vc.getCode().equalsIgnoreCase(req.getCode())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã không đúng");
 
         vc.setUsed(true); codeRepo.save(vc);
 
         var user = userRepo.findByUsernameOrEmail(req.getEmail(), req.getEmail())
-                .orElseThrow(() -> new RuntimeException("Không thấy user"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không thấy user"));
         user.setEnabled(true);
         userRepo.save(user);
     }
 
-    // ✅ đọc thời điểm hiện tại một chỗ
-    private Instant now() { return Instant.now(); }
-
-    // ✅ phát hành cặp token; TTL refresh lấy từ cấu hình
+    /** Phát hành cặp token (rotate refresh) */
     public Map<String,String> issueTokens(UserAccount u){
         var roles = userRoleRepo.findRoleCodesByUserId(u.getId());
         var access = jwt.generate(u.getUsername(), roles);
@@ -258,56 +268,67 @@ public class AuthService {
         return out;
     }
 
+    /* ======================= LOGIN v2 ======================= */
+
     @Transactional
-    public Map<String,String> login2(LoginReq req){
+    public Map<String, String> login2(LoginReq req) {
         String userInput = req.getUsernameOrEmail();
         String ip = huy.example.demoMonday.security.IpUtil.clientIp();
 
-        // ✅ Chặn nếu đang bị khoá
+        // 1) Rate-limit: đang bị khoá
         if (loginRateLimiter.isLocked(userInput, ip)) {
             var until = loginRateLimiter.lockedUntil(userInput, ip);
-            throw new RuntimeException("Tài khoản/IP tạm khoá do nhập sai nhiều lần. Hết khoá lúc: " + until);
+            throw new ResponseStatusException(
+                    HttpStatus.TOO_MANY_REQUESTS,
+                    detailOrGeneric(
+                            "Tài khoản/IP tạm khoá do nhập sai nhiều lần. Hết khoá lúc: " + until,
+                            "Tài khoản/IP tạm khoá do nhập sai nhiều lần"
+                    )
+            );
         }
 
-        // Tìm user (không để lộ thông tin tồn tại hay không)
-        var opt = userRepo.findByUsernameOrEmail(userInput, userInput);
-        if (opt.isEmpty()) {
-            // ✅ ghi nhận thất bại kể cả khi user không tồn tại (giảm dò username)
-            loginRateLimiter.recordFailure(userInput, ip);
-            throw new RuntimeException("Sai thông tin");
-        }
+        // 2) Tìm user (không lộ thông tin khi production)
+        var u = userRepo.findByUsernameOrEmail(userInput, userInput)
+                .orElseThrow(() -> {
+                    loginRateLimiter.recordFailure(userInput, ip);
+                    return new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            detailOrGeneric("USER_NOT_FOUND", "Sai thông tin")
+                    );
+                });
 
-        var u = opt.get();
+        // 3) Chưa xác thực email
         if (!u.isEnabled()) {
-            // có thể không tính là thất bại để tránh khoá user hợp lệ chưa verify
-            throw new RuntimeException("Chưa xác thực email");
+            // KHÔNG tăng fail để tránh khoá oan
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "EMAIL_UNVERIFIED"
+            );
         }
 
+        // 4) Sai mật khẩu
         if (!matchesWithSaltOrLegacy(u, req.getPassword())) {
-            // ✅ ghi nhận thất bại khi sai mật khẩu
             loginRateLimiter.recordFailure(userInput, ip);
             int remain = loginRateLimiter.remainingAttempts(userInput, ip);
-            throw new RuntimeException("Sai thông tin (còn " + remain + " lần thử)");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    detailOrGeneric("Mật khẩu không đúng (còn " + remain + " lần thử)", "Sai thông tin")
+            );
         }
 
-        // ✅ đăng nhập thành công -> reset đếm
+        // 5) Thành công
         loginRateLimiter.reset(userInput, ip);
-
-        // (tuỳ chọn) enforce single-session: revoke toàn bộ refresh cũ của user này
-        // refreshRepo.revokeAllByUserId(u.getId());
-
         return issueTokens(u);
     }
-
 
     @Transactional
     public Map<String,String> refresh(String refreshPlain){
         var rt = refreshRepo.findByTokenHash(sha256(refreshPlain))
-                .orElseThrow(() -> new RuntimeException("Refresh không hợp lệ"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refresh không hợp lệ"));
         if (rt.isRevoked() || rt.getExpiresAt().isBefore(now()))
-            throw new RuntimeException("Refresh đã thu hồi/hết hạn");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh đã thu hồi/hết hạn");
 
-        // ✅ Xoay vòng refresh: revoke cái đang dùng trước khi cấp cặp mới
+        // rotate: revoke cái đang dùng trước khi cấp cặp mới
         rt.setRevoked(true);
         refreshRepo.save(rt);
 
@@ -331,10 +352,10 @@ public class AuthService {
     @Transactional
     public void forgotPassword(ForgotPasswordReq req){
         var u = userRepo.findByUsernameOrEmail(req.getEmail(), req.getEmail())
-                .orElseThrow(() -> new RuntimeException("Không thấy user"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không thấy user"));
 
         if (protectedGuard.isProtected(u.getUsername(), u.getEmail()))
-            throw new RuntimeException("Tài khoản được bảo vệ; liên hệ quản trị.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản được bảo vệ; liên hệ quản trị.");
 
         var code = randomCode(6);
         var vc = new VerificationCode();
@@ -350,17 +371,17 @@ public class AuthService {
     @Transactional
     public void resetPassword(ResetPasswordReq req){
         var vc = codeRepo.findTopByEmailAndTypeAndUsedFalseOrderByCreatedAtDesc(req.getEmail(), "RESET")
-                .orElseThrow(() -> new RuntimeException("Không thấy mã"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thấy mã"));
         if (vc.isUsed() || vc.getExpiresAt().isBefore(now()))
-            throw new RuntimeException("Mã đã dùng/hết hạn");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã đã dùng/hết hạn");
         if (!vc.getCode().equalsIgnoreCase(req.getCode()))
-            throw new RuntimeException("Mã không đúng");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã không đúng");
 
         var u = userRepo.findByUsernameOrEmail(req.getEmail(), req.getEmail())
-                .orElseThrow(() -> new RuntimeException("Không thấy user"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không thấy user"));
 
         if (protectedGuard.isProtected(u.getUsername(), u.getEmail()))
-            throw new RuntimeException("Tài khoản được bảo vệ; liên hệ quản trị.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản được bảo vệ; liên hệ quản trị.");
 
         String newSalt = PasswordSaltUtils.newUserSaltBase64(32);
         u.setPasswordSalt(newSalt);
@@ -369,15 +390,15 @@ public class AuthService {
 
         vc.setUsed(true); codeRepo.save(vc);
 
-        // (tuỳ chọn an toàn hơn) revoke tất cả refresh tokens của user sau reset mật khẩu
+        // (tuỳ chọn an toàn hơn) revoke toàn bộ refresh tokens của user sau reset
         // refreshRepo.revokeAllByUserId(u.getId());
     }
 
-    /* ======================= (Optional) Resend verify ======================= */
-
+    /* ======================= Resend verify (không cần code cũ) ======================= */
     @Transactional
     public void resendVerifyEmail(String email){
-        codeRepo.findByEmailAndType(email, "SIGNUP").ifPresent(codeRepo::delete);
+        // dọn sạch các mã SIGNUP cũ của email
+        codeRepo.deleteAllByEmailAndType(email, "SIGNUP");
 
         var code = randomCode(6);
         var vc = new VerificationCode();

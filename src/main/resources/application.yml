@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/school}
     username: ${DB_USER:school}
@@ -37,11 +41,25 @@ spring:
     mail:
       from: ${MAIL_FROM:no-reply@school.local}   # với Mailtrap có thể để tùy ý
       mock: false                                 # đảm bảo đang gửi thật qua Mailtrap  # nên trùng username
+  upload:
+    base-dir: D:/school_uploads
+    public-prefix: /files
   security:
     jwt:
       secret: ${JWT_SECRET:CHANGE_THIS_SUPER_SECRET_64_BYTES_MINIMUM_0123456789abcdef0123456789abcdef}
       access-minutes: 60
       refresh-days: 7
-
+    login:
+      max-attempts: 5       # số lần sai cho phép
+      window-minutes: 15    # cửa sổ tính toán
+      lock-minutes: 15      # khoá bao lâu khi vượt ngưỡng
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+security:
+  login:
+    reveal-detail: false
 server:
   port: 8080
