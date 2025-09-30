@@ -23,7 +23,7 @@ public class AuthController {
     // DEMO (giữ nguyên)
     @PostMapping("/login-demo")
     public ResponseEntity<ApiResponse<String>> loginDemo(@RequestParam String username, @RequestParam List<String> roles) {
-        String token = jwt.generate(username, roles);
+        String token = jwt.generateAccessToken(username, roles);
         return ResponseEntity.ok(ApiResponse.<String>build().ok(token).message("DEMO token").done());
     }
 

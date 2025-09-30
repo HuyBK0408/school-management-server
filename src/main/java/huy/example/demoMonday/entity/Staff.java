@@ -14,7 +14,7 @@ public class Staff extends BaseEntity {
     @Enumerated(EnumType.STRING) private huy.example.demoMonday.enums.StaffPosition position;
     @ManyToOne(optional=false) private School school;
     private String photoUrl;
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private UserAccount user;
 

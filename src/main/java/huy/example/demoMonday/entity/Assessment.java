@@ -35,15 +35,15 @@ public class Assessment extends BaseEntity {
     private AssessmentType type;
 
     // ==== map quan hệ, trỏ vào đúng cột FK hiện có ====
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "class_room_id", nullable = false)
     private ClassRoom classRoom;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "term_id", nullable = false)
     private Term term;
 

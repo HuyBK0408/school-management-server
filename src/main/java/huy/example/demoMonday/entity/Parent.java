@@ -20,7 +20,7 @@ public class Parent extends BaseEntity {
     private String email;
     private String photoUrl;
     private String address;
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private UserAccount user;
 }

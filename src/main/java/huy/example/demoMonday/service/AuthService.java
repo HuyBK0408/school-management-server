@@ -11,14 +11,20 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.HexFormat;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,23 +43,27 @@ public class AuthService {
 
     private final VerificationCodeRepository codeRepo;
     private final RefreshTokenRepository refreshRepo;
-    private final TokenBlacklistRepository blacklistRepo;
+    // ❌ Bỏ repository blacklist theo hash token cũ
+    // private final TokenBlacklistRepository blacklistRepo;
 
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwt;
+    private final JwtService jwt;                          // ĐÃ nâng cấp: generateAccessToken(...)
     private final EmailService emailService;
     private final ProtectedAdminGuard protectedGuard;
     private final LoginRateLimiter loginRateLimiter;
+    private final TokenBlacklistService tokenBlacklistService; // ✅ MỚI: blacklist theo jti
 
     // Hiện thông báo chi tiết khi login (dev/test). Production nên để false.
     @Value("${security.login.reveal-detail:false}")
     private boolean revealDetail;
 
-    // TTL refresh token (ngày) đọc từ cấu hình
-    @Value("${security.jwt.refresh-days:7}")
+    // TTL refresh token (ngày) – CHUYỂN sang prefix mới
+    @Value("${spring.security.jwt.refresh-days:7}")
     private int refreshDays;
 
     /* ======================= Helpers ======================= */
+
+    private static final SecureRandom RNG = new SecureRandom();
 
     private static String randomCode(int len){
         String alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
@@ -65,11 +75,9 @@ public class AuthService {
 
     private static String sha256(String s){
         try{
-            var md = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] d = md.digest(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            var sb = new StringBuilder();
-            for (byte b: d) sb.append(String.format("%02x", b));
-            return sb.toString();
+            var md = MessageDigest.getInstance("SHA-256");
+            byte[] d = md.digest(s.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(d);
         }catch (Exception e){ throw new RuntimeException(e); }
     }
 
@@ -250,10 +258,10 @@ public class AuthService {
         userRepo.save(user);
     }
 
-    /** Phát hành cặp token (rotate refresh) */
+    /** Phát hành cặp token (rotate refresh) – DÙNG JwtService.generateAccessToken(...) */
     public Map<String,String> issueTokens(UserAccount u){
-        var roles = userRoleRepo.findRoleCodesByUserId(u.getId());
-        var access = jwt.generate(u.getUsername(), roles);
+        var roles = userRoleRepo.findRoleCodesByUserId(u.getId()); // ["SYSTEM_ADMIN", "TEACHER", ...]
+        var access = jwt.generateAccessToken(u.getUsername(), roles);
 
         var refreshPlain = UUID.randomUUID() + "." + UUID.randomUUID();
         var rt = new RefreshToken();
@@ -335,13 +343,31 @@ public class AuthService {
         return issueTokens(rt.getUser());
     }
 
+    /* ======================= LOGOUT ======================= */
+    /**
+     * KHÁCH HÀNG MỚI (khuyến nghị): Controller gọi với token đã decode bởi Resource Server.
+     */
+    @Transactional
+    public void logout(Jwt jwt, String refreshPlain){
+        if (jwt != null) {
+            String jti = jwt.getId();
+            Instant exp = jwt.getExpiresAt() != null ? jwt.getExpiresAt() : now().plus(60, ChronoUnit.SECONDS);
+            tokenBlacklistService.blacklist(jti, exp); // ✅ theo jti
+        }
+        if (refreshPlain!=null && !refreshPlain.isBlank()){
+            refreshRepo.findByTokenHash(sha256(refreshPlain)).ifPresent(rt -> {
+                rt.setRevoked(true); refreshRepo.save(rt);
+            });
+        }
+    }
+
+    /**
+     * HÀM CŨ (giữ để không vỡ compile): Controller cũ truyền access token dạng chuỗi.
+     * Gợi ý chuyển sang hàm trên để blacklist theo jti chuẩn. Ở đây chỉ revoke refresh cho an toàn.
+     */
     @Transactional
     public void logout(String accessToken, String refreshPlain){
-        if (accessToken!=null && !accessToken.isBlank()){
-            var bl = new TokenBlacklist();
-            bl.setTokenHash(sha256(accessToken));
-            blacklistRepo.save(bl);
-        }
+        // KHÔNG dùng hash token access nữa (đã chuyển qua jti). Bỏ qua accessToken ở đây.
         if (refreshPlain!=null && !refreshPlain.isBlank()){
             refreshRepo.findByTokenHash(sha256(refreshPlain)).ifPresent(rt -> {
                 rt.setRevoked(true); refreshRepo.save(rt);
@@ -409,5 +435,13 @@ public class AuthService {
         codeRepo.save(vc);
 
         emailService.send(email, "[School] Verify your email", "Mã xác thực: " + code + " (hết hạn 15 phút)");
+    }
+
+    /* ======================= Utils ======================= */
+
+    private static String newUserSaltBase64(int bytes) {
+        byte[] buf = new byte[bytes];
+        RNG.nextBytes(buf);
+        return Base64.getEncoder().encodeToString(buf);
     }
 }

@@ -38,7 +38,7 @@ public class Student extends BaseEntity {
     private huy.example.demoMonday.enums.StudentStatus status;
 
     // >>> thêm quan hệ tài khoản để PostDbBootstrap dùng được
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private UserAccount user;
 }

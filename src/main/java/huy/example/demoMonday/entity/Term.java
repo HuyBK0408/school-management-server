@@ -24,7 +24,7 @@ public class Term extends BaseEntity {
 
     @Column(name = "order_no", nullable = false)
     private Integer orderNo;
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "school_year_id", nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER) @JoinColumn(name = "school_year_id", nullable = false)
     private SchoolYear schoolYear;
 
 

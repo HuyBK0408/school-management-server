@@ -2,7 +2,7 @@ package huy.example.demoMonday.exception;
 
 import huy.example.demoMonday.dto.response.ApiResponse;
 import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -15,6 +15,9 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.transaction.TransactionSystemException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -143,11 +146,10 @@ public class GlobalExceptionHandler {
         return ApiResponse.<String>build().fail("UNAUTHORIZED", "Thông tin đăng nhập không hợp lệ").done();
     }
 
-    // 401 - JWT
-    @ExceptionHandler({ExpiredJwtException.class, JwtException.class})
+    @ExceptionHandler({ JwtValidationException.class, BadJwtException.class, JwtException.class })
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public ApiResponse<String> handleJwt(JwtException ex, HttpServletRequest req) {
-        String code = (ex instanceof ExpiredJwtException) ? "JWT_EXPIRED" : "JWT_INVALID";
+    public ApiResponse<String> handleSpringJwt(JwtException ex, HttpServletRequest req) {
+        String code = (ex instanceof JwtValidationException) ? "JWT_EXPIRED_OR_INVALID" : "JWT_INVALID";
         log.warn("[{} {}] {}: {}", req.getMethod(), req.getRequestURI(), code, ex.getMessage());
         return ApiResponse.<String>build().fail(code, "Token không hợp lệ").done();
     }

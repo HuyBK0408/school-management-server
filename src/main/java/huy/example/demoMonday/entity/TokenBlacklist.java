@@ -1,14 +1,20 @@
 package huy.example.demoMonday.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter; import lombok.Setter;
+import lombok.*;
 import java.time.Instant;
-import java.util.UUID;
 
-@Entity @Getter @Setter
-public class TokenBlacklist extends BaseEntity {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-    @Column(nullable=false, unique=true, length=200) private String tokenHash;
-    @Column(nullable=false) private Instant blacklistedAt = Instant.now();
+@Entity
+@Table(name = "token_blacklist", indexes = {
+        @Index(name = "idx_token_blacklist_jti", columnList = "jti", unique = true),
+        @Index(name = "idx_token_blacklist_expires", columnList = "expires_at")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class TokenBlacklist {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false, length = 64, unique = true)
+    private String jti;
+    @Column(name = "expires_at", nullable = false)
+    private Instant expiresAt;
 }

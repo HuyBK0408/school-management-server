@@ -33,17 +33,18 @@ CREATE TABLE IF NOT EXISTS public.user_account (
                                                    id            uuid PRIMARY KEY,
                                                    created_at    timestamptz(6) NOT NULL,
     updated_at    timestamptz(6) NOT NULL,
-    email         varchar(255),           -- sẽ UNIQUE ở dưới (ALTER để idempotent)
-    enabled       boolean        NOT NULL,
+    email         varchar(255),
+    enabled       boolean        NOT NULL DEFAULT false,            -- Đặt mặc định false an toàn hơn
     password_hash varchar(255),
-    password_salt varchar(44),            -- NEW: Base64(32 bytes) ~ 44 chars
+    password_salt varchar(44),                                      -- Base64(32 bytes) ~ 44 chars
     phone         varchar(255),
     username      varchar(255)   NOT NULL,
     school_id     uuid,
     soft_status   varchar(20)    NOT NULL,
     CONSTRAINT uk_user_username UNIQUE (username),
     CONSTRAINT fk_user_school FOREIGN KEY (school_id) REFERENCES public.school(id),
-    CONSTRAINT user_soft_status_check CHECK (soft_status::text = ANY(ARRAY['ACTIVE','PENDING_DELETE','BLOCKED']::text[]))
+    -- Đổi BLOCKED -> DELETED để khớp enum hiện có (nếu bạn giữ enum DELETED)
+    CONSTRAINT user_soft_status_check CHECK (soft_status::text = ANY(ARRAY['ACTIVE','PENDING_DELETE','DELETED']::text[]))
     );
 
 CREATE INDEX IF NOT EXISTS ix_user_account_username ON public.user_account (username);
@@ -61,42 +62,42 @@ CREATE TABLE IF NOT EXISTS public.user_role (
     );
 
 -- ======================
--- AUTH SUPPORT (verify/email + logout/blacklist)
+-- AUTH SUPPORT (verify/email)
 -- ======================
 
 CREATE TABLE IF NOT EXISTS public.verification_code (
                                                         id         uuid PRIMARY KEY,
                                                         created_at timestamptz(6) NOT NULL DEFAULT now(),
     updated_at timestamptz(6) NOT NULL DEFAULT now(),
-
     -- user_id cho phép NULL (lúc gửi mã có thể chưa có user)
     user_id    uuid,
-
     code       varchar(12)  NOT NULL,
     email      varchar(320) NOT NULL,
     type       varchar(20)  NOT NULL,   -- SIGNUP / RESET / CHANGE_EMAIL ...
     expires_at timestamptz(6) NOT NULL,
-
     used       boolean NOT NULL DEFAULT false,
     used_at    timestamptz(6),
-
     -- Một email chỉ có 1 mã đang hiệu lực cho mỗi loại
     CONSTRAINT uk_verification_code_email_type UNIQUE (email, type),
-
     CONSTRAINT fk_verification_user FOREIGN KEY (user_id) REFERENCES public.user_account(id)
     );
 
 CREATE INDEX IF NOT EXISTS idx_verification_code_email ON public.verification_code(email);
 
+-- ======================
+-- AUTH SUPPORT (jti blacklist CHUẨN cho access token)
+-- ======================
+
+-- Thay cơ chế cũ (lưu hash toàn token) bằng blacklist theo JTI để đồng bộ với JwtService mới
 CREATE TABLE IF NOT EXISTS public.token_blacklist (
-                                                      id             uuid PRIMARY KEY,
-                                                      created_at     timestamptz(6) NOT NULL DEFAULT now(),
-    updated_at     timestamptz(6) NOT NULL DEFAULT now(),
-    blacklisted_at timestamptz(6) NOT NULL DEFAULT now(),
-    token_hash     varchar(256)   NOT NULL,   -- sha256(...) của token
-    expires_at     timestamptz(6),
-    CONSTRAINT uk_token_blacklist_hash UNIQUE (token_hash)
+                                                      id          BIGSERIAL PRIMARY KEY,
+                                                      jti         varchar(64) UNIQUE NOT NULL,
+    expires_at  timestamptz(6) NOT NULL
     );
+CREATE INDEX IF NOT EXISTS idx_token_blacklist_expires ON public.token_blacklist(expires_at);
+
+-- Nếu bạn đang có bảng token_blacklist cũ (theo token_hash), có thể giữ song song một thời gian rồi drop khi không còn dùng.
+
 -- ======================
 -- AUTH SUPPORT (refresh token store)
 -- ======================
@@ -104,12 +105,10 @@ CREATE TABLE IF NOT EXISTS public.refresh_token (
                                                     id          uuid PRIMARY KEY,
                                                     created_at  timestamptz(6) NOT NULL DEFAULT now(),
     updated_at  timestamptz(6) NOT NULL DEFAULT now(),
-
     token_hash  varchar(255)   NOT NULL,
     user_id     uuid           NOT NULL,
     expires_at  timestamptz(6) NOT NULL,
     revoked     boolean        NOT NULL DEFAULT false,
-
     CONSTRAINT uk_refresh_token_hash UNIQUE (token_hash),
     CONSTRAINT fk_refresh_token_user FOREIGN KEY (user_id)
     REFERENCES public.user_account(id) ON DELETE CASCADE
@@ -117,6 +116,7 @@ CREATE TABLE IF NOT EXISTS public.refresh_token (
 
 CREATE INDEX IF NOT EXISTS idx_refresh_token_user ON public.refresh_token(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_token_exp  ON public.refresh_token(expires_at);
+
 -- ======================
 -- School structure
 -- ======================
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS public.grade_level (
     CONSTRAINT fk_grade_level_school FOREIGN KEY (school_id) REFERENCES public.school(id)
     );
 
--- NOTE: file cũ bị lặp school_year; giữ 1 block duy nhất
+-- NOTE: giữ 1 block duy nhất
 CREATE TABLE IF NOT EXISTS public.school_year (
                                                   id         uuid PRIMARY KEY,
                                                   created_at timestamptz(6) NOT NULL,
@@ -242,10 +242,10 @@ CREATE TABLE IF NOT EXISTS public.student_parent (
     );
 
 CREATE TABLE IF NOT EXISTS public.student_card (
-                                                   id          uuid PRIMARY KEY,
-                                                   created_at  timestamptz(6) NOT NULL,
-    updated_at  timestamptz(6) NOT NULL,
-    card_number varchar(255) NOT NULL,
+                                                   id           uuid PRIMARY KEY,
+                                                   created_at   timestamptz(6) NOT NULL,
+    updated_at   timestamptz(6) NOT NULL,
+    card_number  varchar(255) NOT NULL,
     expired_date date,
     issued_date  date,
     status       varchar(255),
@@ -382,10 +382,7 @@ ALTER TABLE public.user_account
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'uk_user_email'
-  ) THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uk_user_email') THEN
 ALTER TABLE public.user_account
     ADD CONSTRAINT uk_user_email UNIQUE (email);
 END IF;
