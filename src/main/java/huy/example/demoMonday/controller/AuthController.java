@@ -2,100 +2,92 @@ package huy.example.demoMonday.controller;
 
 import huy.example.demoMonday.dto.request.*;
 import huy.example.demoMonday.dto.response.ApiResponse;
-import huy.example.demoMonday.service.JwtService;
 import huy.example.demoMonday.service.AuthService;
+import huy.example.demoMonday.service.JwtService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@Tag(name = "auth-controller")
 public class AuthController {
 
-    private final JwtService jwt;
+    private final JwtService jwt;          // vẫn giữ nếu service cần, không dùng thì có thể xóa
     private final AuthService authService;
 
-    // DEMO (giữ nguyên)
-    @PostMapping("/login-demo")
-    public ResponseEntity<ApiResponse<String>> loginDemo(@RequestParam String username, @RequestParam List<String> roles) {
-        String token = jwt.generateAccessToken(username, roles);
-        return ResponseEntity.ok(ApiResponse.<String>build().ok(token).message("DEMO token").done());
-    }
+    /* ========= RESTful, tối thiểu cần thiết ========= */
 
-    // Login cũ (trả về access token ngắn gọn)
-
-
-    // Đăng ký
-    @PostMapping("/register/student")
-    public ResponseEntity<ApiResponse<Void>> registerStudent(@Valid @RequestBody StudentRegisterReq req){
-        authService.registerStudent(req);
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã gửi mã xác thực email").done());
-    }
-    @PostMapping("/register/teacher")
-    public ResponseEntity<ApiResponse<Void>> registerTeacher(@Valid @RequestBody TeacherRegisterReq req){
-        authService.registerTeacher(req);
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã gửi mã xác thực email").done());
-    }
-    @PostMapping("/register/parent")
-    public ResponseEntity<ApiResponse<Void>> registerParent(@Valid @RequestBody ParentRegisterReq req){
-        authService.registerParent(req);
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã gửi mã xác thực email").done());
-    }
-
-    // Xác thực email
-    @PostMapping("/verify-email")
-    public ResponseEntity<ApiResponse<Void>> verify(@Valid @RequestBody VerifyEmailReq req){
-        authService.verifyEmail(req);
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Xác thực email thành công").done());
-    }
-
-    // Login mới (username/email + password) -> access + refresh
-    @PostMapping("/login2")
-    public ResponseEntity<ApiResponse<Map<String,String>>> login2(@Valid @RequestBody LoginReq req){
+    /** Đăng nhập: trả access + refresh token (tái dùng logic cũ login2 để không đổi service) */
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<Map<String, String>>> login(@Valid @RequestBody LoginReq req) {
         var tokens = authService.login2(req);
-        return ResponseEntity.ok(ApiResponse.<Map<String,String>>build().ok(tokens).message("OK").done());
+        return ResponseEntity.ok(
+                ApiResponse.<Map<String, String>>build().ok(tokens).message("Logged in").done()
+        );
     }
 
-    // Refresh
+    /** Refresh token: cấp cặp token mới */
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<Map<String,String>>> refresh(@Valid @RequestBody RefreshTokenReq req){
+    public ResponseEntity<ApiResponse<Map<String, String>>> refresh(@Valid @RequestBody RefreshTokenReq req) {
         var out = authService.refresh(req.getRefreshToken());
-        return ResponseEntity.ok(ApiResponse.<Map<String,String>>build().ok(out).message("OK").done());
+        return ResponseEntity.ok(
+                ApiResponse.<Map<String, String>>build().ok(out).message("Refreshed").done()
+        );
     }
 
-
+    /** Logout: revoke refresh / blacklist access (đọc access từ Authorization nếu có) */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestHeader(name="Authorization", required=false) String authz,
-            @Valid @RequestBody(required=false) RefreshTokenReq req){
-        String access = (authz!=null && authz.startsWith("Bearer ")) ? authz.substring(7) : null;
-        String refresh = (req!=null ? req.getRefreshToken() : null);
+            @RequestHeader(name = "Authorization", required = false) String authz,
+            @Valid @RequestBody(required = false) RefreshTokenReq req
+    ) {
+        String access = (authz != null && authz.startsWith("Bearer ")) ? authz.substring(7) : null;
+        String refresh = (req != null ? req.getRefreshToken() : null);
         authService.logout(access, refresh);
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã đăng xuất").done());
+        return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Logged out").done());
     }
 
-    // Quên/đặt lại mật khẩu
+    /** Quên mật khẩu: gửi email chứa mã/link đặt lại */
     @PostMapping("/forgot-password")
-    public ResponseEntity<ApiResponse<Void>> forgot(@Valid @RequestBody ForgotPasswordReq req){
+    public ResponseEntity<ApiResponse<Void>> forgot(@Valid @RequestBody ForgotPasswordReq req) {
         authService.forgotPassword(req);
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã gửi mã qua email").done());
+        return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Reset link sent").done());
     }
+
+    /** Đặt lại mật khẩu bằng mã/token hợp lệ */
     @PostMapping("/reset-password")
-    public ResponseEntity<ApiResponse<Void>> reset(@Valid @RequestBody ResetPasswordReq req){
+    public ResponseEntity<ApiResponse<Void>> reset(@Valid @RequestBody ResetPasswordReq req) {
         authService.resetPassword(req);
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đặt lại mật khẩu thành công").done());
+        return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Password reset").done());
     }
-    @PostMapping("/resend-verify")
-    public ResponseEntity<ApiResponse<Void>> resend(@RequestBody ResendVerifyReq req) {
-        // req.email là bắt buộc; code không dùng ở đây
+
+    /** Xác minh email bằng mã đã gửi */
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verify(@Valid @RequestBody VerifyEmailReq req) {
+        authService.verifyEmail(req);
+        return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Email verified").done());
+    }
+
+    /** Gửi lại mã xác minh (path gộp theo nhóm verify-email cho chuẩn) */
+    @PostMapping("/verify-email/resend")
+    public ResponseEntity<ApiResponse<Void>> resend(@Valid @RequestBody ResendVerifyReq req) {
         authService.resendVerifyEmail(req.email());
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã gửi lại mã xác thực.").done());
+        return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Verification sent").done());
     }
 
-
+    /* ========= (Tuỳ chọn) Đăng ký public 1 endpoint duy nhất =========
+     * Nếu cần sau này, hãy tạo DTO PublicRegisterReq và service.registerPublic(req), rồi mở route dưới:
+     *
+     * @PostMapping("/register")
+     * public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody PublicRegisterReq req) {
+     *     authService.registerPublic(req);
+     *     return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Registered. Please verify email.").done());
+     * }
+     */
 }

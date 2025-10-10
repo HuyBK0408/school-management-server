@@ -6,4 +6,5 @@ import java.util.*;
 
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
     Optional<RefreshToken> findByTokenHash(String tokenHash);
+    void deleteAllByUserId(UUID userId); // thêm dòng này
 }

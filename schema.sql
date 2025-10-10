@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.user_account (
     soft_status   varchar(20)    NOT NULL,
     CONSTRAINT uk_user_username UNIQUE (username),
     CONSTRAINT fk_user_school FOREIGN KEY (school_id) REFERENCES public.school(id),
-    -- Đổi BLOCKED -> DELETED để khớp enum hiện có (nếu bạn giữ enum DELETED)
+    -- Khớp enum SoftStatus hiện có
     CONSTRAINT user_soft_status_check CHECK (soft_status::text = ANY(ARRAY['ACTIVE','PENDING_DELETE','DELETED']::text[]))
     );
 
@@ -88,15 +88,12 @@ CREATE INDEX IF NOT EXISTS idx_verification_code_email ON public.verification_co
 -- AUTH SUPPORT (jti blacklist CHUẨN cho access token)
 -- ======================
 
--- Thay cơ chế cũ (lưu hash toàn token) bằng blacklist theo JTI để đồng bộ với JwtService mới
 CREATE TABLE IF NOT EXISTS public.token_blacklist (
                                                       id          BIGSERIAL PRIMARY KEY,
                                                       jti         varchar(64) UNIQUE NOT NULL,
     expires_at  timestamptz(6) NOT NULL
     );
 CREATE INDEX IF NOT EXISTS idx_token_blacklist_expires ON public.token_blacklist(expires_at);
-
--- Nếu bạn đang có bảng token_blacklist cũ (theo token_hash), có thể giữ song song một thời gian rồi drop khi không còn dùng.
 
 -- ======================
 -- AUTH SUPPORT (refresh token store)
@@ -205,13 +202,16 @@ CREATE TABLE IF NOT EXISTS public.student (
     current_class_id uuid,
     school_id        uuid NOT NULL,
     user_id          uuid,
+    soft_status      varchar(20) NOT NULL DEFAULT 'ACTIVE',
     CONSTRAINT uk_student_code UNIQUE (student_code),
     CONSTRAINT uk_student_user UNIQUE (user_id),
     CONSTRAINT fk_student_class  FOREIGN KEY (current_class_id) REFERENCES public.class_room(id),
     CONSTRAINT fk_student_school FOREIGN KEY (school_id)        REFERENCES public.school(id),
     CONSTRAINT fk_student_user   FOREIGN KEY (user_id)          REFERENCES public.user_account(id),
     CONSTRAINT student_gender_check CHECK (gender::text = ANY(ARRAY['MALE','FEMALE','OTHER']::text[])),
-    CONSTRAINT student_status_check CHECK (status::text = ANY(ARRAY['ACTIVE','INACTIVE','TRANSFERRED']::text[]))
+    -- ✅ đã thêm 'GRADUATED'
+    CONSTRAINT student_status_check CHECK (status::text = ANY(ARRAY['ACTIVE','INACTIVE','TRANSFERRED','GRADUATED']::text[])),
+    CONSTRAINT student_soft_status_check CHECK (soft_status::text = ANY(ARRAY['ACTIVE','PENDING_DELETE','DELETED']::text[]))
     );
 
 CREATE TABLE IF NOT EXISTS public.parent (
@@ -256,6 +256,34 @@ CREATE TABLE IF NOT EXISTS public.student_card (
     );
 
 -- ======================
+-- Student lifecycle (audit & history)
+-- ======================
+
+CREATE TABLE IF NOT EXISTS public.student_deletion_audit (
+                                                             id          uuid PRIMARY KEY,
+                                                             student_id  uuid NOT NULL,
+                                                             action      varchar(32) NOT NULL, -- EXPEL / TRANSFER / GRADUATE
+    reason      text,
+    note        text,
+    created_at  timestamptz(6) NOT NULL DEFAULT now(),
+    CONSTRAINT fk_sda_student FOREIGN KEY (student_id) REFERENCES public.student(id)
+    );
+CREATE INDEX IF NOT EXISTS idx_sda_student_id ON public.student_deletion_audit(student_id);
+
+CREATE TABLE IF NOT EXISTS public.student_classroom_history (
+                                                                id            uuid PRIMARY KEY,
+                                                                student_id    uuid NOT NULL,
+                                                                from_class_id uuid,
+                                                                to_class_id   uuid,
+                                                                changed_at    timestamptz(6) NOT NULL DEFAULT now(),
+    note          text,
+    CONSTRAINT fk_sch_student   FOREIGN KEY (student_id)    REFERENCES public.student(id),
+    CONSTRAINT fk_sch_from_cls  FOREIGN KEY (from_class_id) REFERENCES public.class_room(id),
+    CONSTRAINT fk_sch_to_cls    FOREIGN KEY (to_class_id)   REFERENCES public.class_room(id)
+    );
+CREATE INDEX IF NOT EXISTS idx_sch_student_id ON public.student_classroom_history(student_id);
+
+-- ======================
 -- Academic structure
 -- ======================
 
@@ -287,7 +315,6 @@ CREATE TABLE IF NOT EXISTS public.assessment (
     CONSTRAINT fk_assessment_term    FOREIGN KEY (term_id)      REFERENCES public.term(id),
     CONSTRAINT assessment_type_check CHECK (type::text = ANY(ARRAY['QUIZ_15','QUIZ_45','ASSIGNMENT','MIDTERM','FINAL']::text[]))
     );
-
 CREATE INDEX IF NOT EXISTS ix_assessment_group
     ON public.assessment (subject_id, class_room_id, term_id);
 
@@ -390,6 +417,25 @@ END $$;
 
 -- Index (idempotent)
 CREATE INDEX IF NOT EXISTS ix_user_account_email_unique ON public.user_account (email);
+
+-- student: thêm soft_status nếu DB đã có từ trước
+ALTER TABLE public.student
+    ADD COLUMN IF NOT EXISTS soft_status varchar(20) NOT NULL DEFAULT 'ACTIVE';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'student_soft_status_check') THEN
+ALTER TABLE public.student
+    ADD CONSTRAINT student_soft_status_check
+        CHECK (soft_status::text = ANY(ARRAY['ACTIVE','PENDING_DELETE','DELETED']::text[]));
+END IF;
+END $$;
+
+-- ✅ Update constraint để chấp nhận GRADUATED cho DB cũ (idempotent)
+ALTER TABLE public.student DROP CONSTRAINT IF EXISTS student_status_check;
+ALTER TABLE public.student
+    ADD CONSTRAINT student_status_check
+        CHECK (status::text = ANY(ARRAY['ACTIVE','INACTIVE','TRANSFERRED','GRADUATED']::text[]));
 
 -- =========================================================
 -- END

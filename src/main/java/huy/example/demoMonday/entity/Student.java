@@ -1,6 +1,7 @@
 package huy.example.demoMonday.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import huy.example.demoMonday.enums.SoftStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,4 +42,8 @@ public class Student extends BaseEntity {
     @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private UserAccount user;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "soft_status", nullable = false)
+    private SoftStatus softStatus = SoftStatus.ACTIVE;
 }
