@@ -1,6 +1,7 @@
 package huy.example.demoMonday.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import huy.example.demoMonday.dto.request.*;
 import huy.example.demoMonday.entity.*;
 import huy.example.demoMonday.enums.SoftStatus;
@@ -15,7 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import jakarta.validation.Validator;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -51,6 +54,12 @@ public class AuthService {
     private final LoginRateLimiter loginRateLimiter;
     private final TokenBlacklistService tokenBlacklistService; // blacklist theo jti
     private final ObjectMapper objectMapper;
+
+    // NEW: service ảnh (service -> repository), để gắn ảnh sau khi tạo user + profile
+    private final UserPhotoService userPhotoService;
+
+    // NEW: validator để validate DTO con sau khi convertValue
+    private final Validator validator;
 
     // Hiển thị chi tiết khi login (dev/test). Production để false.
     @Value("${security.login.reveal-detail:false}")
@@ -163,6 +172,19 @@ public class AuthService {
 
     /* ======================= REGISTER qua endpoint hợp nhất ======================= */
 
+    // Helper: convertValue + Bean Validation cho payload con
+    private <T> T mapAndValidate(JsonNode node, Class<T> type){
+        var obj = objectMapper.convertValue(node, type);
+        var v = validator.validate(obj);
+        if (!v.isEmpty()){
+            var first = v.iterator().next();
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    first.getPropertyPath() + " " + first.getMessage());
+        }
+        return obj;
+    }
+
+    /** JSON THUẦN (không ảnh) — giữ tương thích */
     @Transactional
     public UserAccount registerPublic(PublicRegisterReq cmd) {
         if (cmd == null || cmd.payload() == null || cmd.role() == null)
@@ -170,25 +192,35 @@ public class AuthService {
 
         switch (cmd.role()) {
             case STUDENT -> {
-                var req = objectMapper.convertValue(cmd.payload(), StudentRegisterReq.class);
+                var req = mapAndValidate(cmd.payload(), StudentRegisterReq.class);
                 registerStudent(req);
                 return userRepo.findByUsernameIgnoreCase(req.getUsername())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Created but not found username"));
             }
             case TEACHER -> {
-                var req = objectMapper.convertValue(cmd.payload(), TeacherRegisterReq.class);
+                var req = mapAndValidate(cmd.payload(), TeacherRegisterReq.class);
                 registerTeacher(req);
                 return userRepo.findByUsernameIgnoreCase(req.getUsername())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Created but not found username"));
             }
             case PARENT -> {
-                var req = objectMapper.convertValue(cmd.payload(), ParentRegisterReq.class);
+                var req = mapAndValidate(cmd.payload(), ParentRegisterReq.class);
                 registerParent(req);
                 return userRepo.findByUsernameIgnoreCase(req.getUsername())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Created but not found username"));
             }
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role không hỗ trợ");
         }
+    }
+
+    /** MULTIPART (có ảnh) — gắn ảnh ngay sau khi tạo user + profile */
+    @Transactional
+    public UserAccount registerPublic(PublicRegisterReq cmd, MultipartFile photo) {
+        var created = registerPublic(cmd); // tái dùng luồng trên
+        if (photo != null && !photo.isEmpty()) {
+            userPhotoService.saveAndAttachToUser(created.getId(), photo); // service → repository (không gọi service nào khác)
+        }
+        return created;
     }
 
     @Transactional
@@ -208,7 +240,7 @@ public class AuthService {
         s.setGender(req.getGender());
         s.setStudentCode(req.getStudentCode());
         s.setSchool(school);
-        s.setPhotoUrl(req.getPhotoUrl());
+        s.setPhotoUrl(req.getPhotoUrl()); // nếu client gửi sẵn URL (trường hợp không up file)
         s.setStatus(huy.example.demoMonday.enums.StudentStatus.ACTIVE);
         s.setUser(user);
         if (req.getCurrentClassId()!=null){

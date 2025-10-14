@@ -1,11 +1,16 @@
 package huy.example.demoMonday.service;
 
+import huy.example.demoMonday.dto.request.AdminCreateUserReq;
 import huy.example.demoMonday.entity.Parent;
 import huy.example.demoMonday.repository.ParentRepository;
 import huy.example.demoMonday.repository.UserAccountRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -14,8 +19,9 @@ public class ParentService {
     private final ParentRepository repo;
     private final UserAccountRepository userAccountRepo;
     private final AuthService authService;
-    public ParentService(ParentRepository repo, UserAccountRepository userAccountRepo, AuthService authService) {
-        this.repo = repo; this.userAccountRepo = userAccountRepo; this.authService = authService;
+    private final UserPhotoService userPhotoService;
+    public ParentService(ParentRepository repo, UserAccountRepository userAccountRepo, AuthService authService, UserPhotoService userPhotoService) {
+        this.repo = repo; this.userAccountRepo = userAccountRepo; this.authService = authService; this.userPhotoService = userPhotoService;
     }
 
     private huy.example.demoMonday.dto.response.ParentResp toDto(Parent e){
@@ -56,6 +62,29 @@ public class ParentService {
 
     @Transactional
     public void delete(java.util.UUID id){ repo.deleteById(id); }
+
+    @Transactional
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public void createAccount(UUID parentId, AdminCreateUserReq req, MultipartFile photo) {
+        Parent p = repo.findById(parentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phụ huynh"));
+
+        if (p.getUser() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phụ huynh đã có tài khoản");
+        }
+        if (req.getRoleCode() != null && !req.getRoleCode().equalsIgnoreCase("PARENT")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "roleCode phải là PARENT cho endpoint này");
+        }
+
+        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getPassword(), "PARENT");
+        p.setUser(user);
+        repo.save(p);
+
+        if (photo != null && !photo.isEmpty()) {
+            userPhotoService.saveAndAttachToUser(user.getId(), photo);
+        }
+    }
+
 
 }
 

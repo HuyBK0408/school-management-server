@@ -1,15 +1,24 @@
 package huy.example.demoMonday.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import huy.example.demoMonday.dto.request.*;
 import huy.example.demoMonday.dto.response.ApiResponse;
 import huy.example.demoMonday.entity.UserAccount;
 import huy.example.demoMonday.service.AuthService;
 import huy.example.demoMonday.service.JwtService;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.util.Map;
@@ -22,6 +31,7 @@ public class AuthController {
 
     private final JwtService jwt;          // giữ nếu nơi khác cần; không dùng có thể xóa
     private final AuthService authService;
+    private final ObjectMapper objectMapper;
 
     /* ========= RESTful, tối thiểu cần thiết ========= */
 
@@ -85,9 +95,9 @@ public class AuthController {
 
     /* ========= Đăng ký PUBLIC hợp nhất: STUDENT / TEACHER / PARENT ========= */
 
-    /** Public register một endpoint duy nhất: body có role + payload */
-    @PostMapping("/register")
-    public ResponseEntity<ApiResponse<UserCreatedDto>> register(@Valid @RequestBody PublicRegisterReq cmd) {
+    /** Public register (JSON thuần) – client không upload ảnh */
+    @PostMapping(value = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<UserCreatedDto>> registerJson(@Valid @RequestBody PublicRegisterReq cmd) {
         UserAccount created = authService.registerPublic(cmd);
 
         var location = URI.create("/api/v1/users/" + created.getId());
@@ -98,6 +108,26 @@ public class AuthController {
                         .ok(body)
                         .message("Registered. Please verify email in your inbox.")
                         .done());
+    }
+
+    /** Public register (MULTIPART) – client gửi kèm ảnh ngay lúc đăng ký */
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<UserCreatedDto>> registerMultipart(
+            @RequestPart("cmd") String cmdJson,                      // ⬅ nhận chuỗi
+            @RequestPart(value = "photo", required = false) MultipartFile photo
+    ) {
+        PublicRegisterReq cmd;
+        try {
+            cmd = objectMapper.readValue(cmdJson, PublicRegisterReq.class); // ⬅ parse JSON
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "cmd phải là JSON hợp lệ");
+        }
+
+        UserAccount created = authService.registerPublic(cmd, photo);
+        var location = URI.create("/api/v1/users/" + created.getId());
+        var body = new UserCreatedDto(created.getId().toString(), created.getUsername(), created.getEmail(), cmd.role().name());
+        return ResponseEntity.created(location)
+                .body(ApiResponse.<UserCreatedDto>build().ok(body).message("Registered. Please verify email in your inbox.").done());
     }
 
     public record UserCreatedDto(String id, String username, String email, String role) {}

@@ -1,12 +1,17 @@
 package huy.example.demoMonday.service;
 
+import huy.example.demoMonday.dto.request.AdminCreateUserReq;
 import huy.example.demoMonday.entity.Staff;
 import huy.example.demoMonday.repository.SchoolRepository;
 import huy.example.demoMonday.repository.StaffRepository;
 import huy.example.demoMonday.repository.UserAccountRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -16,8 +21,9 @@ public class StaffService {
     private final SchoolRepository schoolRepo;
     private final UserAccountRepository userAccountRepo;
     private final AuthService authService;
-    public StaffService(StaffRepository repo, SchoolRepository schoolRepo, UserAccountRepository userAccountRepo, AuthService authService) {
-        this.repo = repo; this.schoolRepo = schoolRepo; this.userAccountRepo = userAccountRepo; this.authService = authService;
+    private final UserPhotoService userPhotoService;
+    public StaffService(StaffRepository repo, SchoolRepository schoolRepo, UserAccountRepository userAccountRepo, AuthService authService, UserPhotoService userPhotoService) {
+        this.repo = repo; this.schoolRepo = schoolRepo; this.userAccountRepo = userAccountRepo; this.authService = authService; this.userPhotoService = userPhotoService;
     }
 
     private huy.example.demoMonday.dto.response.StaffResp toDto(Staff e){
@@ -62,5 +68,26 @@ public class StaffService {
     @Transactional
     public void delete(java.util.UUID id){ repo.deleteById(id); }
 
+    @Transactional
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public void createAccount(UUID staffId, AdminCreateUserReq req, MultipartFile photo) {
+        Staff st = repo.findById(staffId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy giáo viên/nhân sự"));
+
+        if (st.getUser() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Nhân sự đã có tài khoản");
+        }
+        if (req.getRoleCode() != null && !req.getRoleCode().equalsIgnoreCase("TEACHER")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "roleCode phải là TEACHER cho endpoint này");
+        }
+
+        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getPassword(), "TEACHER");
+        st.setUser(user);
+        repo.save(st);
+
+        if (photo != null && !photo.isEmpty()) {
+            userPhotoService.saveAndAttachToUser(user.getId(), photo);
+        }
+    }
 
 }
