@@ -1,6 +1,5 @@
 package huy.example.demoMonday.service;
 
-import huy.example.demoMonday.dto.request.CreateAccountReq;
 import huy.example.demoMonday.entity.Student;
 import huy.example.demoMonday.repository.ClassRoomRepository;
 import huy.example.demoMonday.repository.SchoolRepository;
@@ -66,15 +65,6 @@ public class StudentService {
     @Transactional
     public void delete(java.util.UUID id){ repo.deleteById(id); }
 
-    @Transactional
-    public void createAccount(UUID studentId, CreateAccountReq req) {
-        Student s = repo.findById(studentId)
-                .orElseThrow(() -> new RuntimeException("Không thấy học sinh"));
-        if (s.getUser() != null) throw new RuntimeException("Học sinh đã có tài khoản");
 
-        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "STUDENT");
-        s.setUser(user);
-        repo.save(s);
-    }
 
 }

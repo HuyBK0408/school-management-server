@@ -83,19 +83,7 @@ public class StudentController {
         );
     }
 
-    /** ✅ service sẽ tự tạo account & gửi email */
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN')")
-    @PostMapping("/{id}/create-account")
-    public ResponseEntity<ApiResponse<Void>> createAccount(@PathVariable UUID id,
-                                                           @Valid @RequestBody CreateAccountReq req) {
-        service.createAccount(id, req);
-        return ResponseEntity.ok(
-                ApiResponse.<Void>build()
-                        .ok(null)
-                        .message("Đã tạo tài khoản và gửi email xác thực.")
-                        .done()
-        );
-    }
+
 
     /* ============================
        CÁCH A: PUT subresource

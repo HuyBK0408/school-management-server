@@ -1,6 +1,5 @@
 package huy.example.demoMonday.service;
 
-import huy.example.demoMonday.dto.request.CreateAccountReq;
 import huy.example.demoMonday.entity.Parent;
 import huy.example.demoMonday.repository.ParentRepository;
 import huy.example.demoMonday.repository.UserAccountRepository;
@@ -57,15 +56,6 @@ public class ParentService {
 
     @Transactional
     public void delete(java.util.UUID id){ repo.deleteById(id); }
-    @Transactional
-    public void createAccount(UUID parentId, CreateAccountReq req) {
-        Parent p = repo.findById(parentId)
-                .orElseThrow(() -> new RuntimeException("Không thấy phụ huynh"));
-        if (p.getUser() != null) throw new RuntimeException("Phụ huynh đã có tài khoản");
 
-        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "PARENT");
-        p.setUser(user);
-        repo.save(p);
-    }
 }
 

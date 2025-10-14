@@ -1,6 +1,5 @@
 package huy.example.demoMonday.controller;
 
-import huy.example.demoMonday.dto.request.CreateAccountReq;
 import huy.example.demoMonday.dto.request.ParentReq;
 import huy.example.demoMonday.dto.response.ApiResponse;
 import huy.example.demoMonday.dto.response.ParentResp;
@@ -57,12 +56,5 @@ public class ParentController {
         return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Deleted").done());
     }
 
-    /** ✅ chỉ gọi service – service sẽ tự tạo account & gửi email */
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN')")
-    @PostMapping("/{id}/create-account")
-    public ResponseEntity<ApiResponse<Void>> createAccount(@PathVariable UUID id,
-                                                           @Valid @RequestBody CreateAccountReq req) {
-        service.createAccount(id, req);
-        return ResponseEntity.ok(ApiResponse.<Void>build().ok(null).message("Đã tạo tài khoản và gửi email xác thực.").done());
-    }
+
 }

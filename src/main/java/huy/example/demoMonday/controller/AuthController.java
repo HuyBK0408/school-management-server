@@ -2,6 +2,7 @@ package huy.example.demoMonday.controller;
 
 import huy.example.demoMonday.dto.request.*;
 import huy.example.demoMonday.dto.response.ApiResponse;
+import huy.example.demoMonday.entity.UserAccount;
 import huy.example.demoMonday.service.AuthService;
 import huy.example.demoMonday.service.JwtService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.Map;
 
 @RestController
@@ -18,12 +20,12 @@ import java.util.Map;
 @Tag(name = "auth-controller")
 public class AuthController {
 
-    private final JwtService jwt;          // vẫn giữ nếu service cần, không dùng thì có thể xóa
+    private final JwtService jwt;          // giữ nếu nơi khác cần; không dùng có thể xóa
     private final AuthService authService;
 
     /* ========= RESTful, tối thiểu cần thiết ========= */
 
-    /** Đăng nhập: trả access + refresh token (tái dùng logic cũ login2 để không đổi service) */
+    /** Đăng nhập: trả access + refresh token */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<Map<String, String>>> login(@Valid @RequestBody LoginReq req) {
         var tokens = authService.login2(req);
@@ -32,7 +34,7 @@ public class AuthController {
         );
     }
 
-    /** Refresh token: cấp cặp token mới */
+    /** Refresh token: cấp cặp token mới (rotate refresh) */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<Map<String, String>>> refresh(@Valid @RequestBody RefreshTokenReq req) {
         var out = authService.refresh(req.getRefreshToken());
@@ -41,7 +43,7 @@ public class AuthController {
         );
     }
 
-    /** Logout: revoke refresh / blacklist access (đọc access từ Authorization nếu có) */
+    /** Logout: revoke refresh; access sẽ được blacklist theo jti ở hàm khác */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestHeader(name = "Authorization", required = false) String authz,
@@ -53,7 +55,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Logged out").done());
     }
 
-    /** Quên mật khẩu: gửi email chứa mã/link đặt lại */
+    /** Quên mật khẩu: gửi email chứa mã đặt lại */
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgot(@Valid @RequestBody ForgotPasswordReq req) {
         authService.forgotPassword(req);
@@ -74,20 +76,29 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Email verified").done());
     }
 
-    /** Gửi lại mã xác minh (path gộp theo nhóm verify-email cho chuẩn) */
+    /** Gửi lại mã xác minh */
     @PostMapping("/verify-email/resend")
     public ResponseEntity<ApiResponse<Void>> resend(@Valid @RequestBody ResendVerifyReq req) {
         authService.resendVerifyEmail(req.email());
         return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Verification sent").done());
     }
 
-    /* ========= (Tuỳ chọn) Đăng ký public 1 endpoint duy nhất =========
-     * Nếu cần sau này, hãy tạo DTO PublicRegisterReq và service.registerPublic(req), rồi mở route dưới:
-     *
-     * @PostMapping("/register")
-     * public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody PublicRegisterReq req) {
-     *     authService.registerPublic(req);
-     *     return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Registered. Please verify email.").done());
-     * }
-     */
+    /* ========= Đăng ký PUBLIC hợp nhất: STUDENT / TEACHER / PARENT ========= */
+
+    /** Public register một endpoint duy nhất: body có role + payload */
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<UserCreatedDto>> register(@Valid @RequestBody PublicRegisterReq cmd) {
+        UserAccount created = authService.registerPublic(cmd);
+
+        var location = URI.create("/api/v1/users/" + created.getId());
+        var body = new UserCreatedDto(created.getId().toString(), created.getUsername(), created.getEmail(), cmd.role().name());
+
+        return ResponseEntity.created(location)
+                .body(ApiResponse.<UserCreatedDto>build()
+                        .ok(body)
+                        .message("Registered. Please verify email in your inbox.")
+                        .done());
+    }
+
+    public record UserCreatedDto(String id, String username, String email, String role) {}
 }

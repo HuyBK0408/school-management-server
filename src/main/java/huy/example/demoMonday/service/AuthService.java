@@ -1,5 +1,6 @@
 package huy.example.demoMonday.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import huy.example.demoMonday.dto.request.*;
 import huy.example.demoMonday.entity.*;
 import huy.example.demoMonday.enums.SoftStatus;
@@ -24,7 +25,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.HexFormat;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,21 +43,20 @@ public class AuthService {
 
     private final VerificationCodeRepository codeRepo;
     private final RefreshTokenRepository refreshRepo;
-    // ❌ Bỏ repository blacklist theo hash token cũ
-    // private final TokenBlacklistRepository blacklistRepo;
 
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwt;                          // ĐÃ nâng cấp: generateAccessToken(...)
+    private final JwtService jwt;                          // generateAccessToken(...)
     private final EmailService emailService;
     private final ProtectedAdminGuard protectedGuard;
     private final LoginRateLimiter loginRateLimiter;
-    private final TokenBlacklistService tokenBlacklistService; // ✅ MỚI: blacklist theo jti
+    private final TokenBlacklistService tokenBlacklistService; // blacklist theo jti
+    private final ObjectMapper objectMapper;
 
-    // Hiện thông báo chi tiết khi login (dev/test). Production nên để false.
+    // Hiển thị chi tiết khi login (dev/test). Production để false.
     @Value("${security.login.reveal-detail:false}")
     private boolean revealDetail;
 
-    // TTL refresh token (ngày) – CHUYỂN sang prefix mới
+    // TTL refresh token (ngày)
     @Value("${spring.security.jwt.refresh-days:7}")
     private int refreshDays;
 
@@ -162,7 +161,35 @@ public class AuthService {
         return createUser(req.getUsername(), req.getEmail(), req.getPassword(), req.getRoleCode());
     }
 
-    /* ======================= REGISTER qua /auth/register/* ======================= */
+    /* ======================= REGISTER qua endpoint hợp nhất ======================= */
+
+    @Transactional
+    public UserAccount registerPublic(PublicRegisterReq cmd) {
+        if (cmd == null || cmd.payload() == null || cmd.role() == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu role hoặc payload");
+
+        switch (cmd.role()) {
+            case STUDENT -> {
+                var req = objectMapper.convertValue(cmd.payload(), StudentRegisterReq.class);
+                registerStudent(req);
+                return userRepo.findByUsernameIgnoreCase(req.getUsername())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Created but not found username"));
+            }
+            case TEACHER -> {
+                var req = objectMapper.convertValue(cmd.payload(), TeacherRegisterReq.class);
+                registerTeacher(req);
+                return userRepo.findByUsernameIgnoreCase(req.getUsername())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Created but not found username"));
+            }
+            case PARENT -> {
+                var req = objectMapper.convertValue(cmd.payload(), ParentRegisterReq.class);
+                registerParent(req);
+                return userRepo.findByUsernameIgnoreCase(req.getUsername())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Created but not found username"));
+            }
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role không hỗ trợ");
+        }
+    }
 
     @Transactional
     public void registerStudent(StudentRegisterReq req){
@@ -258,9 +285,9 @@ public class AuthService {
         userRepo.save(user);
     }
 
-    /** Phát hành cặp token (rotate refresh) – DÙNG JwtService.generateAccessToken(...) */
+    /** Phát hành cặp token (rotate refresh) */
     public Map<String,String> issueTokens(UserAccount u){
-        var roles = userRoleRepo.findRoleCodesByUserId(u.getId()); // ["SYSTEM_ADMIN", "TEACHER", ...]
+        var roles = userRoleRepo.findRoleCodesByUserId(u.getId()); // ví dụ: ["SYSTEM_ADMIN", "TEACHER"]
         var access = jwt.generateAccessToken(u.getUsername(), roles);
 
         var refreshPlain = UUID.randomUUID() + "." + UUID.randomUUID();
@@ -295,7 +322,7 @@ public class AuthService {
             );
         }
 
-        // 2) Tìm user (không lộ thông tin khi production)
+        // 2) Tìm user
         var u = userRepo.findByUsernameOrEmail(userInput, userInput)
                 .orElseThrow(() -> {
                     loginRateLimiter.recordFailure(userInput, ip);
@@ -307,11 +334,7 @@ public class AuthService {
 
         // 3) Chưa xác thực email
         if (!u.isEnabled()) {
-            // KHÔNG tăng fail để tránh khoá oan
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "EMAIL_UNVERIFIED"
-            );
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "EMAIL_UNVERIFIED");
         }
 
         // 4) Sai mật khẩu
@@ -344,15 +367,14 @@ public class AuthService {
     }
 
     /* ======================= LOGOUT ======================= */
-    /**
-     * KHÁCH HÀNG MỚI (khuyến nghị): Controller gọi với token đã decode bởi Resource Server.
-     */
+
+    /** Khuyến nghị: gọi với JWT đã decode để blacklist theo jti */
     @Transactional
     public void logout(Jwt jwt, String refreshPlain){
         if (jwt != null) {
             String jti = jwt.getId();
             Instant exp = jwt.getExpiresAt() != null ? jwt.getExpiresAt() : now().plus(60, ChronoUnit.SECONDS);
-            tokenBlacklistService.blacklist(jti, exp); // ✅ theo jti
+            tokenBlacklistService.blacklist(jti, exp); // theo jti
         }
         if (refreshPlain!=null && !refreshPlain.isBlank()){
             refreshRepo.findByTokenHash(sha256(refreshPlain)).ifPresent(rt -> {
@@ -361,13 +383,9 @@ public class AuthService {
         }
     }
 
-    /**
-     * HÀM CŨ (giữ để không vỡ compile): Controller cũ truyền access token dạng chuỗi.
-     * Gợi ý chuyển sang hàm trên để blacklist theo jti chuẩn. Ở đây chỉ revoke refresh cho an toàn.
-     */
+    /** Hàm cũ: chỉ revoke refresh; access nên chuyển sang hàm trên để dùng jti */
     @Transactional
     public void logout(String accessToken, String refreshPlain){
-        // KHÔNG dùng hash token access nữa (đã chuyển qua jti). Bỏ qua accessToken ở đây.
         if (refreshPlain!=null && !refreshPlain.isBlank()){
             refreshRepo.findByTokenHash(sha256(refreshPlain)).ifPresent(rt -> {
                 rt.setRevoked(true); refreshRepo.save(rt);
@@ -416,11 +434,11 @@ public class AuthService {
 
         vc.setUsed(true); codeRepo.save(vc);
 
-        // (tuỳ chọn an toàn hơn) revoke toàn bộ refresh tokens của user sau reset
+        // (tuỳ chọn an toàn hơn) revoke toàn bộ refresh tokens sau reset
         // refreshRepo.revokeAllByUserId(u.getId());
     }
 
-    /* ======================= Resend verify (không cần code cũ) ======================= */
+    /* ======================= Resend verify ======================= */
     @Transactional
     public void resendVerifyEmail(String email){
         // dọn sạch các mã SIGNUP cũ của email
@@ -435,13 +453,5 @@ public class AuthService {
         codeRepo.save(vc);
 
         emailService.send(email, "[School] Verify your email", "Mã xác thực: " + code + " (hết hạn 15 phút)");
-    }
-
-    /* ======================= Utils ======================= */
-
-    private static String newUserSaltBase64(int bytes) {
-        byte[] buf = new byte[bytes];
-        RNG.nextBytes(buf);
-        return Base64.getEncoder().encodeToString(buf);
     }
 }

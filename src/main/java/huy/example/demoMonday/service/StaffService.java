@@ -1,6 +1,5 @@
 package huy.example.demoMonday.service;
 
-import huy.example.demoMonday.dto.request.CreateAccountReq;
 import huy.example.demoMonday.entity.Staff;
 import huy.example.demoMonday.repository.SchoolRepository;
 import huy.example.demoMonday.repository.StaffRepository;
@@ -63,14 +62,5 @@ public class StaffService {
     @Transactional
     public void delete(java.util.UUID id){ repo.deleteById(id); }
 
-    @Transactional
-    public void createAccount(UUID staffId, CreateAccountReq req) {
-        Staff st = repo.findById(staffId)
-                .orElseThrow(() -> new RuntimeException("Không thấy giáo viên/nhân viên"));
-        if (st.getUser() != null) throw new RuntimeException("Đã có tài khoản");
 
-        var user = authService.registerUser(req.getUsername(), req.getEmail(), req.getNewPassword(), "TEACHER");
-        st.setUser(user);
-        repo.save(st);
-    }
 }
