@@ -80,7 +80,7 @@ public class StaffController {
     }
 
     /** Admin tạo account cho giáo viên/nhân sự – multipart + optional photo */
-    @Operation(summary = "Admin tạo account cho giáo viên/nhân sự (multipart: cmd JSON + optional photo)")
+    /////@Operation(summary = "Admin tạo account cho giáo viên/nhân sự (multipart: cmd JSON + optional photo)")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @PostMapping(value = "/{id}/account", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Void>> createAccountMultipart(

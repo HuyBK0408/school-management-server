@@ -30,7 +30,7 @@ public class SubjectController {
     }
 
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN','TEACHER','STAFF','PARENT')")
-    @GetMapping("/<built-in function id>")
+    @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<SubjectResp>> one(@PathVariable UUID id){
         return ResponseEntity.ok(ApiResponse.<SubjectResp>build().ok(service.get(id)).done());
     }
@@ -42,13 +42,13 @@ public class SubjectController {
     }
 
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN','TEACHER','STAFF')")
-    @PutMapping("/<built-in function id>")
+    @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<SubjectResp>> update(@PathVariable UUID id, @Valid @RequestBody SubjectReq req){
         return ResponseEntity.ok(ApiResponse.<SubjectResp>build().ok(service.update(id, req)).message("Updated").done());
     }
 
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN')")
-    @DeleteMapping("/<built-in function id>")
+    @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id){
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Deleted").done());

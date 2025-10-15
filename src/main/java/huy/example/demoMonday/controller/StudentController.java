@@ -155,7 +155,7 @@ public class StudentController {
     }
 
     /** Admin tạo account cho học sinh – multipart + optional photo */
-    @Operation(summary = "Admin tạo account cho học sinh (multipart: cmd JSON + optional photo)")
+    ////@Operation(summary = "Admin tạo account cho học sinh (multipart: cmd JSON + optional photo)")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @PostMapping(value = "/{id}/account", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Void>> createAccountMultipart(

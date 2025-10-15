@@ -4,6 +4,7 @@ package huy.example.demoMonday.repository;
 import huy.example.demoMonday.entity.Term;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TermRepository extends JpaRepository<Term, UUID> {
@@ -13,4 +14,6 @@ public interface TermRepository extends JpaRepository<Term, UUID> {
     boolean existsBySchoolYearIdAndOrderNo(UUID schoolYearId, Integer orderNo);
 
     boolean existsBySchoolYearIdAndName(UUID schoolYearId, String name);
+
+    Optional<Term> findBySchoolYearIdAndOrderNo(UUID schoolYearId, Integer orderNo);
 }

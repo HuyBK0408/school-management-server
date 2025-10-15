@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -124,4 +125,8 @@ public interface GradeAggregateRepository extends JpaRepository<GradeAggregate, 
 
     // Upsert finder cho service recompute
     Optional<GradeAggregate> findByStudent_IdAndSubject_IdAndTerm_Id(UUID studentId, UUID subjectId, UUID termId);
+
+    @Query("select ga from GradeAggregate ga where ga.student.id = :studentId and ga.term.id = :termId")
+    List<GradeAggregate> findAllByStudentAndTerm(@Param("studentId") UUID studentId,
+                                                 @Param("termId") UUID termId);
 }

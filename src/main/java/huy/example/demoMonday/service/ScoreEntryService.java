@@ -1,16 +1,21 @@
 package huy.example.demoMonday.service;
-import huy.example.demoMonday.entity.ScoreEntry;
+
 import huy.example.demoMonday.dto.response.ScoreEntryResp;
 import huy.example.demoMonday.entity.Assessment;
+import huy.example.demoMonday.entity.ScoreEntry;
 import huy.example.demoMonday.entity.Student;
+import huy.example.demoMonday.enums.SoftStatus;
+import huy.example.demoMonday.enums.StudentStatus;
 import huy.example.demoMonday.repository.AssessmentRepository;
 import huy.example.demoMonday.repository.ScoreEntryRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -25,6 +30,7 @@ public class ScoreEntryService {
     private final EntityManager em;
     private final GradeAggregateService gradeAggregateService;
     private final ReportCardService reportCardService;
+    private final AcademicProbationService academicProbationService; // gọi cảnh báo/đuổi
 
     // ===== CRUD =====
     @Transactional
@@ -38,6 +44,9 @@ public class ScoreEntryService {
 
         UUID studentId = body.getStudent().getId();
         UUID assessmentId = body.getAssessment().getId();
+
+        // Chặn nhập điểm cho SV đã đuổi
+        assertStudentNotExpelled(studentId);
 
         // 1) Load assessment thật để dùng subject/term/schoolYear
         Assessment a = assessmentRepository.findById(assessmentId)
@@ -59,15 +68,23 @@ public class ScoreEntryService {
         gradeAggregateService.recomputeForTerm(studentId, subjectId, termId);
         reportCardService.recomputeForYear(studentId, schoolYearId);
 
+        // Đảm bảo GA đã flush trước khi probation đọc
+        em.flush();
+        academicProbationService.previewAndApply(studentId, termId);
+
         // 4) Trả về RESP bạn đang dùng
         return new ScoreEntryResp(e.getId(), studentId, assessmentId, e.getScore(), e.getNote());
     }
 
-    // (Tuỳ chọn) Nếu bạn có update score thì làm tương tự:
     @Transactional
     public ScoreEntryResp update(UUID id, BigDecimal score, String note) {
         ScoreEntry e = scoreEntryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("ScoreEntry not found: " + id));
+
+        UUID studentId = e.getStudent().getId();
+
+        // Chặn sửa điểm cho SV đã đuổi
+        assertStudentNotExpelled(studentId);
 
         if (score != null) e.setScore(score);
         if (note  != null) e.setNote(note);
@@ -77,7 +94,6 @@ public class ScoreEntryService {
         Assessment a = assessmentRepository.findById(e.getAssessment().getId())
                 .orElseThrow(() -> new IllegalStateException("Assessment missing for ScoreEntry: " + id));
 
-        UUID studentId    = e.getStudent().getId();
         UUID subjectId    = a.getSubject().getId();
         UUID termId       = a.getTerm().getId();
         UUID schoolYearId = a.getTerm().getSchoolYear().getId();
@@ -85,24 +101,37 @@ public class ScoreEntryService {
         gradeAggregateService.recomputeForTerm(studentId, subjectId, termId);
         reportCardService.recomputeForYear(studentId, schoolYearId);
 
+        em.flush();
+        academicProbationService.previewAndApply(studentId, termId);
+
         return new ScoreEntryResp(e.getId(), studentId, a.getId(), e.getScore(), e.getNote());
     }
 
-
     @Transactional
     public ScoreEntry updateById(UUID id, BigDecimal score, String note) {
-        var se = scoreEntryRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Score entry not found"));
+        var se = scoreEntryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Score entry not found"));
+
+        var studentId = se.getStudent().getId();
+
+        // Chặn sửa điểm cho SV đã đuổi
+        assertStudentNotExpelled(studentId);
+
         if (score != null) se.setScore(score);
         if (note != null)  se.setNote(note);
         var saved = scoreEntryRepository.save(se);
 
         // Recompute sau khi sửa
-        var studentId = saved.getStudent().getId();
         var subjectId = saved.getAssessment().getSubject().getId();
         var termId    = saved.getAssessment().getTerm().getId();
         var yearId    = saved.getAssessment().getTerm().getSchoolYear().getId();
+
         gradeAggregateService.recomputeForTerm(studentId, subjectId, termId);
         reportCardService.recomputeForYear(studentId, yearId);
+
+        em.flush();
+        academicProbationService.previewAndApply(studentId, termId);
+
         return saved;
     }
 
@@ -123,5 +152,29 @@ public class ScoreEntryService {
         return scoreEntryRepository.listByTerm(termId, pageable);
     }
 
+    // =================== helpers ===================
 
+    /** SV đã đuổi? Ưu tiên status==EXPELLED; nếu không, softStatus != ACTIVE coi như đóng băng. */
+    private boolean isStudentExpelled(Student s) {
+        try {
+            if (s.getStatus() == StudentStatus.EXPELLED) return true;
+        } catch (Exception ignore) {}
+        SoftStatus soft = s.getSoftStatus();
+        return soft != null && soft != SoftStatus.ACTIVE;
+    }
+
+    /** Ném lỗi nếu SV đã đuổi học. */
+    private void assertStudentNotExpelled(UUID studentId) {
+        Student s = em.find(Student.class, studentId);
+        if (s == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found: " + studentId);
+        }
+        if (isStudentExpelled(s)) {
+            // !!! đổi từ IllegalStateException sang ResponseStatusException(409)
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Học sinh đã bị đuổi học - không thể nhập/chỉnh điểm"
+            );
+        }
+    }
 }

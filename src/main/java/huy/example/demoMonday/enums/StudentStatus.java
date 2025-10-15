@@ -4,5 +4,6 @@ public enum StudentStatus {
     ACTIVE,
     INACTIVE,
     TRANSFERRED,
-    GRADUATED   // thêm mới cho case tốt nghiệp
+    GRADUATED,
+    EXPELLED// thêm mới cho case tốt nghiệp
 }

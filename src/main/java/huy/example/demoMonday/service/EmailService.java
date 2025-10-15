@@ -1,11 +1,13 @@
 package huy.example.demoMonday.service;
 
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -17,75 +19,97 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.properties.mail.smtp.from:no-reply@school.local}")
+    @Value("${app.mail.from:no-reply@school.local}")
     private String from;
 
-    /** Bật khi chạy seed/bootstrap/dev để không gửi mail thật. */
-    @Value("${app.mail.suppress:false}")
-    private boolean suppress;
+    /** Nếu true: KHÔNG gửi ra SMTP, chỉ log (dùng khi dev seed). */
+    @Value("${app.mail.mock:false}")
+    private boolean mock;
 
-    /** Thêm delay giữa các email để tránh rate-limit Mailtrap (ms). */
+    /** Thêm delay để tránh rate limit (Mailtrap Sandbox thường không cần). */
     @Value("${app.bootstrap.mail-delay-ms:0}")
     private long delayMs;
 
-    /**
-     * Gửi email an toàn:
-     * - Nếu đang có transaction: đăng ký gửi ở phase AFTER_COMMIT ⇒ rollback sẽ KHÔNG gửi.
-     * - Nếu không có transaction: gửi ngay.
-     * - Nếu suppress=true: chỉ log, không gửi.
-     * - Nếu lỗi SMTP: chỉ warn, KHÔNG ném exception ra ngoài.
-     */
-    public void send(String to, String subject, String text) {
-        SimpleMailMessage msg = build(to, subject, text);
+    /* ===================== Public APIs ===================== */
 
+    /** Gửi HTML: nếu có transaction thì gửi AFTER_COMMIT; nếu không thì gửi ngay. */
+    public void sendHtmlAfterCommit(String to, String subject, String html) {
+        Runnable task = () -> doSendHtml(from, to, subject, html);
+        runNowOrAfterCommit(task);
+    }
+
+    /** Gửi TEXT: nếu có transaction thì gửi AFTER_COMMIT; nếu không thì gửi ngay. */
+    public void sendTextAfterCommit(String to, String subject, String text) {
+        Runnable task = () -> doSendText(from, to, subject, text);
+        runNowOrAfterCommit(task);
+    }
+
+    /* --------- BACKWARD-COMPAT SHIMS (không ảnh hưởng file khác) --------- */
+    /** API cũ vẫn còn ở nhiều service (ví dụ AuthService). */
+    public void send(String to, String subject, String text) {
+        // Giữ hành vi an toàn: gửi sau khi commit transaction (nếu có)
+        sendTextAfterCommit(to, subject, text);
+    }
+
+    /** Trường hợp nơi khác từng gọi sendHtml(...). */
+    public void sendHtml(String to, String subject, String html) {
+        sendHtmlAfterCommit(to, subject, html);
+    }
+
+    /* ===================== Helpers ===================== */
+
+    private void runNowOrAfterCommit(Runnable task) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            // Chỉ gửi sau khi commit thành công
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override public void afterCommit() {
-                    doSend(msg);
-                }
+                @Override public void afterCommit() { task.run(); }
             });
         } else {
-            // Không có TX thì gửi luôn
-            doSend(msg);
+            task.run();
         }
     }
 
-    /* ============ helpers ============ */
-
-    private SimpleMailMessage build(String to, String subject, String text) {
-        var msg = new SimpleMailMessage();
-        msg.setFrom(from);
-        msg.setTo(to);
-        msg.setSubject(subject);
-        msg.setText(text);
-        return msg;
-    }
-
-    private void doSend(SimpleMailMessage msg) {
-        if (suppress) {
-            log.info("[mail suppressed] to={} | subject={} | bodyLen={}",
-                    String.join(",", msg.getTo()), msg.getSubject(),
-                    msg.getText() == null ? 0 : msg.getText().length());
+    private void doSendHtml(String from, String to, String subject, String html) {
+        if (mock) {
+            log.info("[mail MOCK HTML] to={} | subject={} | bodyLen={}", to, subject, html == null ? 0 : html.length());
             return;
         }
-
-        // Thêm delay nếu cấu hình
-        if (delayMs > 0) {
-            try {
-                Thread.sleep(delayMs);
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
+        sleepIfDelayConfigured();
         try {
+            MimeMessage mm = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mm, "UTF-8");
+            helper.setFrom(from);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(html, true); // HTML
+            mailSender.send(mm);
+            log.debug("Email(HTML) sent to {} with subject '{}'", to, subject);
+        } catch (Exception ex) {
+            log.warn("Email(HTML) send FAILED to {} (subject='{}'): {}", to, subject, ex.getMessage());
+        }
+    }
+
+    private void doSendText(String from, String to, String subject, String text) {
+        if (mock) {
+            log.info("[mail MOCK TEXT] to={} | subject={} | bodyLen={}", to, subject, text == null ? 0 : text.length());
+            return;
+        }
+        sleepIfDelayConfigured();
+        try {
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setFrom(from);
+            msg.setTo(to);
+            msg.setSubject(subject);
+            msg.setText(text);
             mailSender.send(msg);
-            log.debug("Email sent to {} with subject '{}'", String.join(",", msg.getTo()), msg.getSubject());
+            log.debug("Email(TEXT) sent to {} with subject '{}'", to, subject);
         } catch (MailException ex) {
-            // Ví dụ: 550 Too many emails per second...
-            log.warn("Email send FAILED to {} (subject='{}'): {}",
-                    String.join(",", msg.getTo()), msg.getSubject(), ex.getMessage());
+            log.warn("Email(TEXT) send FAILED to {} (subject='{}'): {}", to, subject, ex.getMessage());
+        }
+    }
+
+    private void sleepIfDelayConfigured() {
+        if (delayMs > 0) {
+            try { Thread.sleep(delayMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
         }
     }
 }
