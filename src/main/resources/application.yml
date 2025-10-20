@@ -81,3 +81,13 @@ logging:
     huy.example.demoMonday.service.EmailService: debug
     org.springframework.mail: info
     javax.mail: info
+google:
+  drive:
+    service-account-key-path: classpath:drive-sa.json.json
+    upload-folder-id: "1U8iCyt7_e9ZPsXZxM38fIA8rznqsjYrv"
+    application-name: "SchoolManagement"
+report:
+  mapping:
+    studentToClassPath: "s.currentClass.id"
+
+

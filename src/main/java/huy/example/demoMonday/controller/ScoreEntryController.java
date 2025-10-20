@@ -1,9 +1,12 @@
 package huy.example.demoMonday.controller;
 
+import huy.example.demoMonday.dto.request.FiveScoresBulkUpsertReq;
+import huy.example.demoMonday.dto.request.FiveScoresUpsertReq;
 import huy.example.demoMonday.dto.response.ApiResponse;
 import huy.example.demoMonday.dto.response.ScoreEntryResp;
 import huy.example.demoMonday.entity.ScoreEntry;
 import huy.example.demoMonday.service.ScoreEntryService;
+import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -79,5 +82,31 @@ public class ScoreEntryController {
         return ResponseEntity.ok(
                 ApiResponse.<ScoreEntryResp>build().ok(resp).message("Updated").done()
         );
+    }
+
+    // ====== Nhập 1 lần 5 đầu điểm cho 1 SV–1 môn–1 kỳ ======
+    @PostMapping("/upsert-five")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN','TEACHER','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> upsertFive(@RequestBody @Valid FiveScoresUpsertReq req) {
+        scoreEntryService.upsertFive(
+                req.studentId(), req.classId(), req.subjectId(), req.termId(),
+                req.quiz15(), req.quiz45(), req.assignment(), req.midterm(), req.finalExam()
+        );
+        return ResponseEntity.ok(ApiResponse.<Void>build().ok().message("Upserted 5 components").done());
+    }
+
+    // ====== Bulk: nhiều SV một lượt (ví dụ 20 SV) ======
+    @PostMapping("/bulk-upsert-five")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','SCHOOL_ADMIN','TEACHER','STAFF')")
+    public ResponseEntity<ApiResponse<Integer>> bulkUpsertFive(@RequestBody @Valid FiveScoresBulkUpsertReq req) {
+        int n = scoreEntryService.bulkUpsertFive(
+                req.items().stream().map(it ->
+                        new ScoreEntryService.BulkFiveItem(
+                                it.studentId(), it.classId(), it.subjectId(), it.termId(),
+                                it.quiz15(), it.quiz45(), it.assignment(), it.midterm(), it.finalExam()
+                        )
+                ).toList()
+        );
+        return ResponseEntity.ok(ApiResponse.<Integer>build().ok(n).message("Upserted").done());
     }
 }

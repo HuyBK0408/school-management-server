@@ -5,6 +5,7 @@ import huy.example.demoMonday.entity.Assessment;
 import huy.example.demoMonday.enums.AssessmentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
@@ -14,4 +15,6 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
 
     boolean existsByClassRoom_IdAndSubject_IdAndTerm_IdAndType(
             UUID classRoomId, UUID subjectId, UUID termId, AssessmentType type);
+
+    List<Assessment> findAllByClassRoom_IdAndSubject_IdAndTerm_Id(UUID classId, UUID subjectId, UUID termId);
 }
