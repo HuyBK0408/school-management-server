@@ -1,11 +1,14 @@
 package huy.example.demoMonday.controller;
 
+import huy.example.demoMonday.service.GoogleDriveSaService;
+import huy.example.demoMonday.service.GoogleDriveSaService.UploadResult;
 import huy.example.demoMonday.service.TeacherReportDocService;
 import huy.example.demoMonday.service.TeacherReportDocService.DocResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,14 +16,17 @@ import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
-@RestController
 @RequiredArgsConstructor
+@RestController
 @RequestMapping("/api/v1/teacher/reports")
 public class TeacherReportController {
 
-    private final TeacherReportDocService teacherReportDocService;
+    private final TeacherReportDocService docService;
+    private final GoogleDriveSaService driveSaService;
 
     @GetMapping("/semester-average-doc")
     @PreAuthorize("hasRole('TEACHER')")
@@ -28,36 +34,51 @@ public class TeacherReportController {
             @RequestParam UUID classId,
             @RequestParam UUID termId
     ) {
-        DocResult doc = teacherReportDocService.generateSemesterSummaryDoc(classId, termId);
-        ByteArrayResource resource = new ByteArrayResource(doc.bytes());
+        DocResult doc = docService.generateSemesterSummaryDoc(classId, termId);
 
-        // File name gốc (có dấu) & bản ASCII fallback
-        String utf8FileName = doc.fileName();
-        String asciiFileName = toAsciiSafe(utf8FileName); // chỉ ASCII để Tomcat không chặn
-
-        // RFC 5987: filename*=UTF-8''<percent-encoded>
-        String encodedUtf8 = UriUtils.encode(utf8FileName, StandardCharsets.UTF_8);
-
-        String contentDisposition =
-                "attachment; filename=\"" + asciiFileName + "\"; filename*=UTF-8''" + encodedUtf8;
+        String safeName = toAsciiSafe(doc.fileName());
+        String encoded = UriUtils.encode(safeName, StandardCharsets.UTF_8);
+        ByteArrayResource body = new ByteArrayResource(doc.bytes());
 
         return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encoded + "\"")
                 .contentType(MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                 .contentLength(doc.bytes().length)
-                .body(resource);
+                .body(body);
     }
 
-    /** Chuẩn hoá “không dấu, ASCII-only” để an toàn khi gán vào header filename */
+    @GetMapping("/semester-average-doc-url")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<?> uploadSemesterAverageDocAndReturnUrl(
+            @RequestParam UUID classId,
+            @RequestParam UUID termId,
+            @RequestParam(required = false) String folderId
+    ) {
+        try {
+            DocResult doc = docService.generateSemesterSummaryDoc(classId, termId);
+            UploadResult up = driveSaService.uploadDocxSmart(doc.bytes(), doc.fileName(), folderId);
+
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("fileId", up.id());
+            resp.put("name", up.name());
+            resp.put("viewUrl", up.viewUrl());
+            resp.put("downloadUrl", up.downloadUrl());
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            ProblemDetail pd = ProblemDetail.forStatus(500);
+            pd.setTitle("Upload Drive failed");
+            pd.setDetail(e.getMessage());
+            return ResponseEntity.status(500).body(pd);
+        }
+    }
+
+    /** Chuẩn hoá ASCII để an toàn khi gán vào header filename */
     private static String toAsciiSafe(String s) {
         if (s == null || s.isBlank()) return "file.docx";
-        // loại dấu (NFD), bỏ ký tự tổ hợp, sau đó thay ký tự không an toàn bằng '_'
         String noDiacritics = Normalizer.normalize(s, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "");
-        // chỉ giữ chữ, số, gạch dưới, gạch ngang, chấm. Các ký tự khác thay bằng '_'
         String ascii = noDiacritics.replaceAll("[^A-Za-z0-9._-]", "_");
-        // tránh rỗng
         if (ascii.isBlank()) ascii = "file.docx";
         return ascii;
     }

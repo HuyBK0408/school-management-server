@@ -44,11 +44,26 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // Bạn đang dùng API thuần JWT nên tắt CSRF
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
-                        // Public
+                        // ===== PUBLIC (không cần Bearer) =====
+                        // OAuth init/callback cho Google Drive
+                        .requestMatchers("/api/v1/google/drive/oauth2/**").permitAll()
+                        // Swagger / Actuator / file tĩnh / favicon
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/actuator/**",
+                                "/files/**",
+                                "/favicon.ico",
+                                "/error"
+                        ).permitAll()
+                        // Auth API public
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
@@ -57,16 +72,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/verify-email",
                                 "/api/v1/auth/verify-email/resend"
-
-                        ).permitAll()
-                        .requestMatchers(
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/actuator/**",
-                                "/files/**"
-
                         ).permitAll()
 
+                        // ===== BUSINESS RULES =====
                         // Ví dụ rule module school
                         .requestMatchers(HttpMethod.POST,   "/api/v1/schools/**").hasAnyRole("SYSTEM_ADMIN","SCHOOL_ADMIN")
                         .requestMatchers(HttpMethod.PUT,    "/api/v1/schools/**").hasAnyRole("SYSTEM_ADMIN","SCHOOL_ADMIN")
@@ -75,15 +83,18 @@ public class SecurityConfig {
                         // Khu admin tổng
                         .requestMatchers("/auth/register/admin/**", "/admin/**").hasRole("SYSTEM_ADMIN")
 
+                        // ===== Mặc định: yêu cầu auth =====
                         .anyRequest().authenticated()
                 )
+
                 // Đưa lỗi 401/403 về GlobalExceptionHandler
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) -> resolver.resolveException(req, res, null, e)) // 401
                         .accessDeniedHandler((req, res, e) -> resolver.resolveException(req, res, null, e))       // 403
                 )
+
+                // Resource Server JWT
                 .oauth2ResourceServer(o -> o
-                        // ĐẨY lỗi 401/403 về GlobalExceptionHandler
                         .authenticationEntryPoint((req, res, ex) -> resolver.resolveException(req, res, null, ex))
                         .accessDeniedHandler((req, res, ex) -> resolver.resolveException(req, res, null, ex))
                         .jwt(j -> j
@@ -91,7 +102,6 @@ public class SecurityConfig {
                                 .jwtAuthenticationConverter(jwtAuthConverter())
                         )
                 );
-
 
         return http.build();
     }

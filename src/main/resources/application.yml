@@ -82,12 +82,16 @@ logging:
     org.springframework.mail: info
     javax.mail: info
 google:
+  # Service Account (fallback hoặc dùng cho Shared Drive)
   drive:
-    service-account-key-path: classpath:drive-sa.json.json
-    upload-folder-id: "1U8iCyt7_e9ZPsXZxM38fIA8rznqsjYrv"
+    service-account-key-path: classpath:drive-sa.json   # <— ĐÚNG: 1 .json
+    upload-folder-id: ""                                 # để trống = My Drive gốc (chỉ khi dùng OAuth)
     application-name: "SchoolManagement"
-report:
-  mapping:
-    studentToClassPath: "s.currentClass.id"
+
+  # OAuth (gmail cá nhân): ưu tiên dùng để upload vào My Drive (có quota)
+  oauth:
+    enabled: true
+    client-secret-path: classpath:drive-oauth.json       # file OAuth client (bạn tạo theo hướng dẫn trước)
+    redirect-uri: "http://localhost:8080/api/v1/google/drive/oauth2/callback"
 
 
